@@ -1,100 +1,102 @@
-# Govener — DDD Tasarım Kararları
+﻿# Govener — DDD Design Decisions
 
-Son güncelleme: 8 Kasım 2026
+Last updated: November 8, 2026
 
-Bu doküman, apartman/site yönetim uygulaması için görüşmelerde alınan kararları kaydeder. **Kesinleşen kararlar** ile **taslak öneriler** birbirinden ayrıdır. Taslaklar, geliştirme için onaylanmış gereksinim sayılmaz. Qwen ile geliştirmeye geçildiğinde açık konular varsayımla iş kuralına dönüştürülmemelidir.
+This document records decisions discussed for the apartment and residential community management application. **Confirmed decisions** are separate from **draft proposals**. Draft proposals are not approved implementation requirements. When development starts with Qwen, unresolved questions must not be converted into business rules through assumptions.
 
-## 1. Ürün ve teknik kapsam — kesinleşen
+Documentation language: English. Discussion may continue in Turkish.
 
-- Hizmet başlangıçta Türkiye, İstanbul için sunulacak.
-- Hedef kullanıcılar bağımsız apartman/site yönetimleri ve profesyonel yönetim firmalarıdır.
-- Ürün sahibi kendi firmasıyla yönetim hizmeti verirken uygulamayı kullanabilecek; müşteriler yalnızca uygulamayı da satın alabilecek.
-- Backend Java Spring Boot ile monolith olacak.
-- Veritabanı MongoDB olacak.
-- Kullanıcı uygulamasının web ve Android sürümleri olacak.
-- İlk geliştirilecek ürün, yönetici ve sakinin ortak kullandığı uygulamadır.
-- Admin frontend'i ayrı olacak; admin gereksinimleri ve geliştirmesi sonraya bırakılmıştır.
-- Yönetici telefondan da yönetim işlemleri yapabilecek. Android'in ayrıntılı işlem kapsamı henüz kesinleşmedi.
-- İlk sürümde manuel havale/EFT takibi yeterlidir. Online ödeme sonraki sürümlere bırakılmıştır.
-- Yönetim firmasının kendi muhasebesi ilk sürüme dahil değildir. Apartman/site mali takibi bundan ayrı bir alandır.
+## 1. Product and Technical Scope — Confirmed
 
-## 2. Ortak dil ve roller — kesinleşen
+- The initial service area is Istanbul, Türkiye.
+- Target customers include independent apartment/community management teams and professional property management companies.
+- The product owner may use the application while providing management services through their own company. Customers may also purchase only the software.
+- The backend will be a Java Spring Boot monolith.
+- The database will be MongoDB.
+- The user application will have web and Android versions.
+- The first product to be developed is the shared application for managers and residents.
+- The admin frontend will be separate. Admin requirements and implementation are deferred.
+- Managers will also be able to perform management operations from their phones. The detailed Android feature scope is not finalized.
+- Manual bank transfer tracking is sufficient for the first release. Online payments are deferred.
+- Accounting for the management company's own business is excluded from the first release. Community financial tracking is a separate concern.
 
-| Terim | Tanım |
+## 2. Ubiquitous Language and Roles — Confirmed
+
+| Term | Definition |
 |---|---|
-| Apartman/Site Admini | Yetkili olduğu apartman/siteyle ilgili bütün işlemleri yapabilen rol. Ayrı frontend kullanır. |
-| Apartman/Site Yöneticisi | Ortak kullanıcı uygulamasını kullanan, sınırlı yönetim yetkilerine sahip rol. |
-| Sakin | Yöneticiyle aynı uygulamayı kullanan, sınırlı erişime sahip rol. |
-| Bağımsız bölüm | Hesabı takip edilen daire, dükkân veya ofis gibi birim. Görüşmelerdeki “daire bazlı hesap” bu kavram üzerinden modellenir. |
-| Malik/kiracı ilişkisi | Bir kişinin bağımsız bölümle tarihli ilişkisi. Yönetim yetkisinden ayrıdır. |
+| Community Admin | A role with full authority over the apartment/community within its authorized scope. Uses a separate frontend. |
+| Community Manager | A role with limited management permissions using the shared user application. |
+| Resident | A role with limited access using the same application as managers. |
+| Unit | An independently tracked property such as an apartment, shop, or office. The agreed unit-based account model uses this concept. |
+| Owner/Tenant Relationship | A person's dated relationship with a unit, separate from management authority. |
 
-Yönetici ve sakin aynı frontend'e giriş yapar; erişimleri farklıdır. Ayrıntılı yetki matrisi henüz kesinleşmemiştir. “Yönetici” rolü sınırsız erişim anlamına gelmez.
+Managers and residents sign in through the same frontend, with different access rights. The detailed permission matrix is not finalized. The Manager role does not imply unrestricted access.
 
-## 3. Temel domain kararları — açıkça onaylanan
+## 3. Core Domain Decisions — Explicitly Approved
 
-### DDD-001 — Bağımsız bölüm bazlı borç hesabı
+### DDD-001 — Unit-Based Debt Account
 
-Borç hesabı kişiye değil bağımsız bölüme bağlı takip edilir.
+Debt is tracked against the unit rather than the person.
 
-Sonuçları:
+Consequences:
 
-- Malik veya kiracı değiştiğinde bağımsız bölümün hesabı ve geçmişi korunur.
-- Borcun bağlı olduğu hesap ile borcun ilgili kişileri ayrı kavramlardır.
-- Bu teknik takip modeli, tek başına hukuki ödeme sorumluluğu belirlemez.
-- Eski borcun yeni kişiye yüklenmesi veya gösterilmesi için henüz kesinleşmiş bir kural yoktur.
+- The unit's account and history remain intact when its owner or tenant changes.
+- The account holding a charge and the people associated with that charge are separate concepts.
+- This tracking model does not, by itself, establish legal payment liability.
+- Rules for assigning or displaying historical debt to a new person are not finalized.
 
-### DDD-002 — Tarihli malik/kiracı ilişkileri
+### DDD-002 — Dated Owner/Tenant Relationships
 
-Malik ve kiracı ilişkileri başlangıç ve bitiş tarihleriyle tutulur.
+Owner and tenant relationships have start and end dates.
 
-Sonuçları:
+Consequences:
 
-- Kişi değişiminde eski ilişki silinmez; bitirilir ve yeni ilişki oluşturulur.
-- Geçmiş ilişkiler korunur.
-- Geçmiş ilişkilerin korunması, eski kullanıcının erişiminin süresiz devam edeceği anlamına gelmez.
-- Dönem sınırları, ay ortasında değişiklik ve geçmişe dönük düzeltme kuralları ayrıca belirlenecektir.
+- When a person changes, the previous relationship is ended rather than deleted, and a new relationship is created.
+- Historical relationships are retained.
+- Retaining a historical relationship does not imply indefinite application access for a former user.
+- Period boundaries, mid-month changes, and retrospective corrections require further definition.
 
-### DDD-003 — Yönetim yetkisi ile daire ilişkisinin ayrılması
+### DDD-003 — Separate Management Authority and Unit Relationships
 
-Yönetim yetkileri malik/kiracı ilişkisinden bağımsız tutulur.
+Management authority is maintained independently from owner/tenant relationships.
 
-Sonuçları:
+Consequences:
 
-- Yönetici olmak için ilgili sitede malik veya kiracı olmak gerekmez.
-- Bir kişi hem yönetici hem sakin olabilir.
-- Malik veya kiracı olmak otomatik yönetim yetkisi vermez.
-- Yönetim yetkisinin sonlanması mali kayıtları ve daire ilişkilerini silmez.
+- A manager does not need to own or rent a unit in the community.
+- A person may be both a manager and a resident.
+- Ownership or tenancy does not automatically grant management authority.
+- Ending management authority does not delete financial records or unit relationships.
 
-## 4. Kavramsal model — taslak
+## 4. Conceptual Model — Draft
 
-Aşağıdaki isimler ve sınırlar görüşmede önerilmiştir; henüz nihai sınıf, aggregate veya koleksiyon tasarımı değildir.
+The following names and boundaries were proposed during discussion. They are not final class, aggregate, or collection designs.
 
-| Kavram | Kod adı önerisi | Sorumluluk |
+| Concept | Proposed Code Name | Responsibility |
 |---|---|---|
-| Yönetim alanı | `Community` | Yönetilen apartman veya site; yönetim firması değildir. |
-| Blok | `Block` | Site içindeki isteğe bağlı blok yapısı. |
-| Bağımsız bölüm | `Unit` | Daire, dükkân veya ofis ve buna ait hesap bağlamı. |
-| Kişi | `Person` | Uygulamaya giriş yapmasa da kaydı bulunabilen kişi. |
-| Kullanıcı hesabı | `UserAccount` | Kimlik doğrulama ve uygulamaya giriş hesabı. |
-| Daire ilişkisi | `UnitRelationship` | Kişi ile bağımsız bölüm arasındaki tarihli malik/kiracı ilişkisi. |
-| Yönetim üyeliği/yetkisi | `CommunityMembership` | Kullanıcının yönetim alanındaki rol ve izinleri. |
-| Borç | `Charge` | Bağımsız bölüme çıkarılmış aidat veya ek ödeme. |
-| Toplu borçlandırma | `ChargeBatch` | Bir işlemle birden fazla bağımsız bölüme borç çıkarılması. |
-| Borçla ilgili kişi bağlantısı | `ChargeParty` | Borç ile ilgili tarihli daire ilişkileri arasında önerilen bağlantı. |
-| Ödeme bildirimi | `PaymentNotification` | Sakinin ödeme yaptığını bildirmesi. |
-| Tahsilat | `Payment` | Yönetici tarafından doğrulanan para girişi. |
-| Ödeme dağılımı | `PaymentAllocation` | Bir tahsilatın borçları hangi tutarlarda kapattığı. |
-| Gider | `Expense` | Apartman/site için oluşan gider. |
-| Gider ödemesi | `ExpensePayment` | Gider için gerçekleşen para çıkışı. |
-| Mali hesap | `FinancialAccount` | Banka hesabı veya nakit kasa. |
-| Duyuru | `Announcement` | Belirli bir hedef kitleye yayımlanan içerik. |
-| Talep | `ServiceRequest` | Arıza, şikâyet veya hizmet talebi. |
+| Managed community | `Community` | The managed apartment building or residential community, not the management company. |
+| Block | `Block` | An optional building/block within a community. |
+| Unit | `Unit` | An apartment, shop, or office and its account context. |
+| Person | `Person` | A person who may be recorded without having an application account. |
+| User account | `UserAccount` | The authentication and sign-in account. |
+| Unit relationship | `UnitRelationship` | A dated owner/tenant relationship between a person and a unit. |
+| Community membership/authority | `CommunityMembership` | A user's role and permissions within a community. |
+| Charge | `Charge` | A maintenance fee or additional charge issued to a unit. |
+| Charge batch | `ChargeBatch` | Issuing charges to multiple units in one operation. |
+| Charge party association | `ChargeParty` | A proposed link between a charge and relevant dated unit relationships. |
+| Payment notification | `PaymentNotification` | A resident's notification that they have made a payment. |
+| Recorded payment | `Payment` | An incoming payment verified by a manager. |
+| Payment allocation | `PaymentAllocation` | The amounts by which a payment settles specific charges. |
+| Expense | `Expense` | An expense incurred for the community. |
+| Expense payment | `ExpensePayment` | An outgoing payment against an expense. |
+| Financial account | `FinancialAccount` | A bank account or cash account. |
+| Announcement | `Announcement` | Content published to a specified audience. |
+| Service request | `ServiceRequest` | A fault report, complaint, or service request. |
 
-Önerilen ilişkiler:
+Proposed relationships:
 
 ```text
 Community
-  ├── Block (isteğe bağlı)
+  ├── Block (optional)
   ├── Unit
   │     ├── UnitRelationship → Person
   │     └── Charge
@@ -102,84 +104,84 @@ Community
 
 UserAccount → Person
 Payment → PaymentAllocation → Charge
-PaymentNotification → Payment (onay/eşleştirme sonrasında)
+PaymentNotification → Payment (after approval/matching)
 Expense → ExpensePayment → FinancialAccount
 ```
 
-Bu şema sahiplik veya MongoDB içine gömme kararı değildir; kavramsal ilişkileri gösterir.
+This diagram shows conceptual relationships. It does not prescribe aggregate ownership or MongoDB embedding.
 
-## 5. Modül sınırları — taslak
+## 5. Module Boundaries — Draft
 
-Tek monolith içinde önerilen modüller:
+Proposed modules within a single monolith:
 
-| Modül | Sorumluluk |
+| Module | Responsibility |
 |---|---|
-| `identity` | Kullanıcı hesapları ve kimlik doğrulama. |
-| `community` | Apartman/site, blok, bağımsız bölüm, kişiler ve ilişkiler. |
-| `access` | Yönetici/sakin erişimi ve izinler. |
-| `finance` | Borçlandırma, tahsilat, dağılım, gider ve mali hesaplar. |
-| `communication` | Duyurular ve hedef kitle. |
-| `service` | Talepler, atamalar ve durum geçmişi. |
-| `notification` | Uygulama içi bildirim ve Android push gönderimi. |
+| `identity` | User accounts and authentication. |
+| `community` | Communities, blocks, units, people, and relationships. |
+| `access` | Manager/resident access and permissions. |
+| `finance` | Charges, payments, allocations, expenses, and financial accounts. |
+| `communication` | Announcements and audiences. |
+| `service` | Requests, assignments, and status history. |
+| `notification` | In-app notifications and Android push delivery. |
 
-Modül sınırları servis ayrıştırması anlamına gelmez. Kesin aggregate sınırları ve modüller arası sözleşmeler henüz belirlenmemiştir.
+Module boundaries do not imply separate services. Exact aggregate boundaries and inter-module contracts are not defined yet.
 
-## 6. Finans iş kuralları — onay bekleyen öneriler
+## 6. Financial Business Rules — Proposals Awaiting Approval
 
-- Ödeme bildirimi ve tahsilat ayrı kayıtlardır; dekont yüklemek tek başına borcu kapatmaz.
-- Yönetici bir bildirimi tahsilata dönüştürebilir veya mevcut tahsilatla eşleştirebilir.
-- Bildirim olmadan da manuel tahsilat kaydedilebilir.
-- Kısmi ödeme ve fazla ödeme desteklenir.
-- Bir tahsilat birden fazla borca dağıtılabilir; ilk sürümde dağılım aynı bağımsız bölüm içinde kalır.
-- Dağılım toplamı tahsilatı, bir borca dağıtılan tutar da borcun kalanını aşamaz.
-- Dağıtılmayan tutar bağımsız bölümün kullanılabilir alacağı olarak izlenir.
-- Borç dönemi, oluşturulma tarihi ve son ödeme tarihi ayrı tutulur.
-- Borçların ilgili kişileri yalnızca oluşturulma tarihinden çıkarılmaz; geçmiş dönem için sonradan borç oluşturulabilir.
-- Giderin oluşması ile giderin ödenmesi ayrı olaylardır.
-- Mali kayıtlar sessizce silinmez; düzeltme ve geri alma işlemleri izlenebilir olur.
-- Tekrarlanan istekler çift borç veya çift tahsilat üretmez.
+- Payment notifications and recorded payments are separate records. Uploading a transfer receipt alone does not settle debt.
+- A manager may convert a notification into a recorded payment or match it to an existing payment.
+- A manual payment may also be recorded without a notification.
+- Partial payments and overpayments are supported.
+- A payment may be allocated across multiple charges. In the first release, allocation stays within the same unit.
+- Total allocations cannot exceed the payment amount, and allocation to a charge cannot exceed its outstanding amount.
+- Unallocated funds remain available as credit on the unit's account.
+- The charge period, issue date, and due date are separate.
+- People associated with a charge cannot be inferred solely from its creation date; a charge may be issued retrospectively for an earlier period.
+- Incurring an expense and paying it are separate events.
+- Financial records are not silently deleted. Corrections and reversals remain traceable.
+- Repeated requests do not produce duplicate charges or payments.
 
-Önerilen ödeme bildirimi durumları: `PENDING`, `ACCEPTED`, `REJECTED`, `WITHDRAWN`.
+Proposed payment notification statuses: `PENDING`, `ACCEPTED`, `REJECTED`, `WITHDRAWN`.
 
-Ödeme dağıtım sırası, gecikme hesabı, iptal/ters kayıt mekanizması ve ilgili kişinin nasıl belirleneceği henüz karara bağlanmamıştır.
+Payment allocation order, late-charge calculations, cancellation/reversal mechanisms, and charge-party determination remain undecided.
 
-## 7. Görünürlük — açık karar
+## 7. Visibility — Open Decision
 
-Son görüşmede aşağıdaki yaklaşım önerildi ancak henüz kullanıcı tarafından onaylanmadı:
+The following approach has been proposed but has not been approved by the user:
 
-- Kiracı yalnızca kendisiyle ilişkilendirilmiş borç ve ödemeleri görür.
-- Malik kendi mülkiyet dönemine ait daire hesabını görür.
-- Yönetici yetkisi kapsamında dairenin bütün mali geçmişini görür.
-- Yeni kiracı eski borcun ilgili kişisi olarak otomatik atanmaz.
+- A tenant sees only charges and payments associated with them.
+- An owner sees the unit account for their ownership period.
+- A manager sees the unit's complete financial history within their authorized scope.
+- A new tenant is not automatically associated with historical debt.
 
-Şu konular netleştirilmeden bu öneri uygulanmış kural sayılmamalıdır:
+The proposal must not be treated as an implemented rule until these questions are resolved:
 
-1. Eski borçlar yeni sakin ekranında hangi biçimde gösterilecek veya gizlenecek?
-2. Daire toplam bakiyesi ile kişinin görebildiği işlemlerden oluşan bakiye nasıl ayrılacak?
-3. İlişkisi biten kişinin geçmişe erişimi ne kadar ve hangi kapsamda devam edecek?
-4. Malik ve kiracının aynı dönemdeki erişimleri nasıl farklılaşacak?
-5. Ödemedeki gönderen bilgisi ve dekont gibi kişisel belgeleri kim görebilecek?
+1. How should historical debt be shown to or hidden from a new resident?
+2. How should the unit's total balance be distinguished from the balance of transactions visible to a person?
+3. How long and to what extent may a person access historical records after their relationship ends?
+4. How should owner and tenant access differ within the same period?
+5. Who may access payer details and personal documents such as bank transfer receipts?
 
-## 8. Teknik tasarım ilkeleri — öneri
+## 8. Technical Design Principles — Proposed
 
-- DDD kavramları doğrudan MongoDB koleksiyonlarına eşitlenmez.
-- Bütün site, daireler ve mali geçmiş tek bir büyüyen dokümana gömülmez.
-- Yönetim alanına ait işlemlerde `communityId` ve sunucu tarafında yetki kontrolü kullanılır.
-- Farklı yönetim alanlarındaki daire, borç ve mali hesapların aynı işleme bağlanması engellenir.
-- Para hesabında `double` kullanılmaz; uygun ondalık temsil ve para birimi birlikte kullanılır.
-- Tahsilat, dağılım ve hesap hareketlerinin tutarlılığı birlikte ele alınır; MongoDB transaction ve eşzamanlılık tasarımı buna göre yapılır.
-- Mali işlemlerde yapan kişi, zaman ve gerekçe kaydedilir.
-- İşlem anları ile dönem/son ödeme günü gibi takvim tarihleri ayrılır; kullanıcı gösteriminde Türkiye saat dilimi dikkate alınır.
-- Frontend'lerin farklı olması yetkilendirme yerine geçmez.
+- DDD concepts are not mapped directly one-to-one to MongoDB collections.
+- The entire community, its units, and its financial history are not embedded in one growing document.
+- Community-scoped operations use `communityId` and server-side authorization.
+- Units, charges, and financial accounts from different communities cannot be linked within the same financial operation.
+- Monetary calculations do not use `double`; an appropriate decimal representation and currency are used together.
+- Consistency across payments, allocations, and account movements is designed as a whole, including MongoDB transactions and concurrency control.
+- Financial operations record the actor, time, and reason.
+- Event timestamps are distinguished from calendar dates such as billing periods and due dates. User-facing times account for the Türkiye time zone.
+- Separate frontends do not replace authorization.
 
-## 9. Sonraki domain çalışmaları
+## 9. Next Domain Design Work
 
-1. Borç ve ödeme görünürlük kurallarını kesinleştirmek.
-2. Yönetici ve sakin için işlem bazlı yetki matrisini çıkarmak.
-3. Borçlandırma, kısmi/fazla ödeme, taşınma ve düzeltme senaryolarını örneklerle tanımlamak.
-4. Aggregate sınırlarını, invariant'ları ve transaction sınırlarını belirlemek.
-5. Domain event ve uygulama komutlarını tanımlamak.
-6. MongoDB fiziksel modelini ve indeksleri tasarlamak.
-7. API sözleşmesi ve kabul kriterleriyle Qwen geliştirme görevlerini hazırlamak.
+1. Finalize charge and payment visibility rules.
+2. Define the operation-level permission matrix for managers and residents.
+3. Specify examples for charging, partial/overpayments, resident changes, and corrections.
+4. Define aggregate boundaries, invariants, and transaction boundaries.
+5. Define domain events and application commands.
+6. Design the MongoDB physical model and indexes.
+7. Prepare Qwen development tasks with API contracts and acceptance criteria.
 
-Admin paneli, abonelik/fiyatlandırma, yönetim firması muhasebesi ve online ödeme bu çalışma için mevcut geliştirme kapsamının dışındadır.
+The admin panel, subscriptions/pricing, management-company accounting, and online payments are outside the current development scope.
