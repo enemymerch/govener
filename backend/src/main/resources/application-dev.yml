@@ -1,0 +1,9 @@
+﻿server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+app:
+  cursor-secret: development-only-replace-before-deployment-2026
+  seed:
+    enabled: true

@@ -1,0 +1,47 @@
+{
+  "asOf": "2026-11-08",
+  "units": [
+    {
+      "id": "c-04",
+      "label": "C · 04",
+      "block": "C",
+      "floor": 1,
+      "kind": "APARTMENT",
+      "areaSqm": 100
+    },
+    {
+      "id": "c-08",
+      "label": "C · 08",
+      "block": "C",
+      "floor": 2,
+      "kind": "APARTMENT",
+      "areaSqm": 100
+    }
+  ],
+  "people": [
+    {
+      "id": "p-2",
+      "name": "Alex Yilmaz"
+    },
+    {
+      "id": "p-8",
+      "name": "Mina Yilmaz"
+    },
+    {
+      "id": "p-20",
+      "name": "Ada Yılmaz"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel-c04",
+      "unitId": "c-04",
+      "personId": "p-2",
+      "type": "OWNER",
+      "startsOn": "2025-01-01",
+      "endsOn": null
+    }
+  ],
+  "charges": [],
+  "payments": []
+}

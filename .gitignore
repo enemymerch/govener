@@ -1,0 +1,10 @@
+﻿**/target/
+.idea/
+*.iml
+.env
+.env.*
+!.env.example
+.tools/
+.local-data/
+
+backend/*.log

@@ -1,0 +1,13 @@
+package com.govener.community.domain;
+
+public enum Permission {
+  COMMUNITY_READ,
+  UNIT_READ,
+  DIRECTORY_READ,
+  FINANCE_READ,
+  CHARGE_CREATE,
+  PAYMENT_RECORD,
+  EXPENSE_WRITE,
+  REQUEST_MANAGE,
+  ANNOUNCEMENT_WRITE
+}

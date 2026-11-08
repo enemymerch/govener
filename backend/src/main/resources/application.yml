@@ -1,0 +1,53 @@
+﻿spring:
+  application:
+    name: govener
+  data:
+    mongodb:
+      uri: ${GOVENER_MONGODB_URI:mongodb://localhost:27017/govener?replicaSet=rs0&directConnection=true}
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+    serialization:
+      write-dates-as-timestamps: false
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 16MB
+server:
+  port: ${PORT:8080}
+  servlet:
+    session:
+      timeout: 60m
+      cookie:
+        name: govener_session
+        http-only: true
+        secure: ${GOVENER_COOKIE_SECURE:true}
+        same-site: lax
+  error:
+    include-message: never
+    include-stacktrace: never
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+app:
+  cursor-secret: ${GOVENER_CURSOR_SECRET:}
+  resident-financial-visibility: ${GOVENER_FINANCIAL_VISIBILITY:CURRENT_RELATIONSHIP_PERIOD}
+  allowed-origins: ${GOVENER_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  seed:
+    enabled: false
+  jobs:
+    enabled: true
+  mail:
+    enabled: ${GOVENER_MAIL_ENABLED:false}
+    from: ${GOVENER_MAIL_FROM:no-reply@example.invalid}
+    reset-url: ${GOVENER_RESET_URL:http://localhost:5173/reset-password}
+
+logging:
+  level:
+    org.springframework: INFO
+    org.mongodb.driver: WARN

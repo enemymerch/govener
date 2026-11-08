@@ -1,0 +1,28 @@
+﻿sequenceDiagram
+    actor Manager
+    participant FS as FinanceService
+    participant Access as AccessService
+    participant IE as IdempotentExecutor
+    participant DB as MongoDB replica set
+    participant OP as OutboxProjector
+    Manager->>FS: Record payment + expected account version + idempotency key
+    FS->>Access: Require membership and PAYMENT_RECORD
+    FS->>IE: Execute scoped command
+    IE->>DB: Begin transaction and inspect stored command result
+    alt Same key and identical payload already committed
+        DB-->>IE: Original result
+        IE-->>Manager: Replay original payment
+    else New command
+        IE->>FS: Execute business operation
+        FS->>DB: Read scoped unit account, bank account and charges
+        FS->>FS: Validate versions and same-unit allocations
+        FS->>DB: Save Payment, Charge changes, UnitAccount and FinancialAccount
+        FS->>DB: Append AccountEntry, audit and outbox event
+        IE->>DB: Store command fingerprint and result
+        IE->>DB: Commit all changes together
+        FS-->>Manager: Recorded payment
+        OP->>DB: Read committed outbox event
+        OP->>OP: Check current membership and in-app preference
+        OP->>DB: Create deterministic per-user notifications and mark processed
+    end
+    Note over FS,DB: Validation or concurrency failure rolls the financial transaction back

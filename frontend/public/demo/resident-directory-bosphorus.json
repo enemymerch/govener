@@ -1,0 +1,50 @@
+{
+  "asOf": "2026-11-08",
+  "currentPersonId": "p-2",
+  "ownUnitIds": [
+    "c-04"
+  ],
+  "units": [
+    {
+      "id": "c-04",
+      "label": "C · 04",
+      "block": "C"
+    },
+    {
+      "id": "c-08",
+      "label": "C · 08",
+      "block": "C"
+    }
+  ],
+  "people": [
+    {
+      "id": "p-2",
+      "name": "Alex Yilmaz"
+    },
+    {
+      "id": "p-8",
+      "name": "Mina Yilmaz"
+    },
+    {
+      "id": "p-20",
+      "name": "Ada Yılmaz"
+    }
+  ],
+  "residences": [
+    {
+      "id": "res-c04-1",
+      "unitId": "c-04",
+      "personId": "p-2"
+    },
+    {
+      "id": "res-c04-2",
+      "unitId": "c-04",
+      "personId": "p-8"
+    },
+    {
+      "id": "res-c08",
+      "unitId": "c-08",
+      "personId": "p-20"
+    }
+  ]
+}

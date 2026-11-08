@@ -1,0 +1,25 @@
+﻿flowchart TB
+    I["identity<br/>UserAccount · Preferences<br/>PasswordReset"]
+    C["community<br/>Community · Unit · Person<br/>Membership · Relationship · Residence"]
+    F["finance<br/>Charge · Payment · UnitAccount<br/>FinancialAccount · Expense"]
+    S["service<br/>ServiceRequest<br/>RequestComment · RequestEvent"]
+    A["communication<br/>Announcement · Audience"]
+    T["attachment<br/>Attachment metadata<br/>Private file content"]
+    N["notification<br/>DomainEvent outbox<br/>AppNotification"]
+    SH["shared<br/>Money · BillingPeriod · Actor<br/>Audit and transaction ports"]
+    I -->|authenticated user| C
+    C -->|membership and unit scope| F
+    C -->|membership and staff scope| S
+    C -->|membership and audience scope| A
+    F -->|receipts and documents| T
+    S -->|photos| T
+    F -->|committed activity| N
+    S -->|committed activity| N
+    A -->|committed activity| N
+    SH -.->|shared primitives| F
+    SH -.->|shared primitives| S
+    SH -.->|shared primitives| A
+    classDef business fill:#edf4ed,stroke:#3e6a55,color:#203f32
+    classDef support fill:#f4f0e7,stroke:#9b8d67,color:#403c30
+    class I,C,F,S,A business
+    class T,N,SH support

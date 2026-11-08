@@ -1,0 +1,107 @@
+{
+  "asOf": "2026-11-08",
+  "currentPersonId": "p-2",
+  "ownUnitIds": [
+    "a-12",
+    "a-03"
+  ],
+  "units": [
+    {
+      "id": "a-03",
+      "label": "A · 03",
+      "block": "A"
+    },
+    {
+      "id": "a-08",
+      "label": "A · 08",
+      "block": "A"
+    },
+    {
+      "id": "a-12",
+      "label": "A · 12",
+      "block": "A"
+    },
+    {
+      "id": "b-02",
+      "label": "B · 02",
+      "block": "B"
+    },
+    {
+      "id": "b-06",
+      "label": "B · 06",
+      "block": "B"
+    },
+    {
+      "id": "b-14",
+      "label": "B · 14",
+      "block": "B"
+    }
+  ],
+  "people": [
+    {
+      "id": "p-2",
+      "name": "Alex Yilmaz"
+    },
+    {
+      "id": "p-3",
+      "name": "Ayşe Aksoy"
+    },
+    {
+      "id": "p-5",
+      "name": "Ece Arslan"
+    },
+    {
+      "id": "p-6",
+      "name": "Can Aydın"
+    },
+    {
+      "id": "p-7",
+      "name": "Deniz Kaya"
+    },
+    {
+      "id": "p-8",
+      "name": "Mina Yilmaz"
+    },
+    {
+      "id": "p-9",
+      "name": "Bora Arslan"
+    }
+  ],
+  "residences": [
+    {
+      "id": "res-1",
+      "unitId": "a-12",
+      "personId": "p-2"
+    },
+    {
+      "id": "res-2",
+      "unitId": "a-12",
+      "personId": "p-8"
+    },
+    {
+      "id": "res-3",
+      "unitId": "a-08",
+      "personId": "p-5"
+    },
+    {
+      "id": "res-4",
+      "unitId": "a-08",
+      "personId": "p-9"
+    },
+    {
+      "id": "res-5",
+      "unitId": "a-03",
+      "personId": "p-7"
+    },
+    {
+      "id": "res-6",
+      "unitId": "b-06",
+      "personId": "p-6"
+    },
+    {
+      "id": "res-7",
+      "unitId": "b-14",
+      "personId": "p-3"
+    }
+  ]
+}

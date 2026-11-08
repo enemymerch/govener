@@ -1,0 +1,291 @@
+{
+  "asOf": "2026-11-08",
+  "units": [
+    {
+      "id": "a-03",
+      "label": "A · 03",
+      "block": "A",
+      "floor": 1,
+      "kind": "APARTMENT",
+      "areaSqm": 85
+    },
+    {
+      "id": "a-08",
+      "label": "A · 08",
+      "block": "A",
+      "floor": 2,
+      "kind": "APARTMENT",
+      "areaSqm": 110
+    },
+    {
+      "id": "a-12",
+      "label": "A · 12",
+      "block": "A",
+      "floor": 3,
+      "kind": "APARTMENT",
+      "areaSqm": 125
+    },
+    {
+      "id": "b-02",
+      "label": "B · 02",
+      "block": "B",
+      "floor": 0,
+      "kind": "SHOP",
+      "areaSqm": 65
+    },
+    {
+      "id": "b-06",
+      "label": "B · 06",
+      "block": "B",
+      "floor": 2,
+      "kind": "APARTMENT",
+      "areaSqm": 110
+    },
+    {
+      "id": "b-14",
+      "label": "B · 14",
+      "block": "B",
+      "floor": 4,
+      "kind": "APARTMENT",
+      "areaSqm": 140
+    }
+  ],
+  "people": [
+    {
+      "id": "p-1",
+      "name": "Selin Demir"
+    },
+    {
+      "id": "p-2",
+      "name": "Alex Yilmaz"
+    },
+    {
+      "id": "p-3",
+      "name": "Ayşe Aksoy"
+    },
+    {
+      "id": "p-4",
+      "name": "Mert Çelik"
+    },
+    {
+      "id": "p-5",
+      "name": "Ece Arslan"
+    },
+    {
+      "id": "p-6",
+      "name": "Can Aydın"
+    },
+    {
+      "id": "p-7",
+      "name": "Deniz Kaya"
+    },
+    {
+      "id": "p-8",
+      "name": "Mina Yilmaz"
+    },
+    {
+      "id": "p-9",
+      "name": "Bora Arslan"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel-1",
+      "unitId": "a-12",
+      "personId": "p-1",
+      "type": "OWNER",
+      "startsOn": "2022-06-01",
+      "endsOn": null
+    },
+    {
+      "id": "rel-2",
+      "unitId": "a-12",
+      "personId": "p-2",
+      "type": "TENANT",
+      "startsOn": "2026-09-01",
+      "endsOn": null
+    },
+    {
+      "id": "rel-3",
+      "unitId": "a-12",
+      "personId": "p-3",
+      "type": "TENANT",
+      "startsOn": "2024-01-15",
+      "endsOn": "2026-08-31"
+    },
+    {
+      "id": "rel-4",
+      "unitId": "a-08",
+      "personId": "p-4",
+      "type": "OWNER",
+      "startsOn": "2023-03-01",
+      "endsOn": null
+    },
+    {
+      "id": "rel-5",
+      "unitId": "a-08",
+      "personId": "p-5",
+      "type": "TENANT",
+      "startsOn": "2026-02-01",
+      "endsOn": null
+    },
+    {
+      "id": "rel-6",
+      "unitId": "a-03",
+      "personId": "p-7",
+      "type": "OWNER",
+      "startsOn": "2021-05-01",
+      "endsOn": null
+    },
+    {
+      "id": "rel-7",
+      "unitId": "b-06",
+      "personId": "p-6",
+      "type": "OWNER",
+      "startsOn": "2020-01-01",
+      "endsOn": null
+    },
+    {
+      "id": "rel-8",
+      "unitId": "b-14",
+      "personId": "p-1",
+      "type": "OWNER",
+      "startsOn": "2024-04-01",
+      "endsOn": null
+    },
+    {
+      "id": "rel-9",
+      "unitId": "b-14",
+      "personId": "p-3",
+      "type": "TENANT",
+      "startsOn": "2026-09-01",
+      "endsOn": null
+    },
+    {
+      "id": "rel-a03-owner-alex",
+      "unitId": "a-03",
+      "personId": "p-2",
+      "type": "OWNER",
+      "startsOn": "2025-01-01",
+      "endsOn": null
+    }
+  ],
+  "charges": [
+    {
+      "id": "ch-a12-nov",
+      "unitId": "a-12",
+      "descriptionKey": "November maintenance fee",
+      "period": "2026-11-01",
+      "dueOn": "2026-11-15",
+      "amountMinor": 240000
+    },
+    {
+      "id": "ch-a12-oct",
+      "unitId": "a-12",
+      "descriptionKey": "October maintenance fee",
+      "period": "2026-10-01",
+      "dueOn": "2026-10-15",
+      "amountMinor": 240000
+    },
+    {
+      "id": "ch-a08-nov",
+      "unitId": "a-08",
+      "descriptionKey": "November maintenance fee",
+      "period": "2026-11-01",
+      "dueOn": "2026-11-15",
+      "amountMinor": 240000
+    },
+    {
+      "id": "ch-b06-nov",
+      "unitId": "b-06",
+      "descriptionKey": "November maintenance fee",
+      "period": "2026-11-01",
+      "dueOn": "2026-11-15",
+      "amountMinor": 240000
+    }
+  ],
+  "payments": [
+    {
+      "id": "pay-a12-oct",
+      "unitId": "a-12",
+      "paidOn": "2026-10-12",
+      "amountMinor": 240000,
+      "allocations": [
+        {
+          "chargeId": "ch-a12-oct",
+          "amountMinor": 240000
+        }
+      ]
+    },
+    {
+      "id": "pay-b06-nov",
+      "unitId": "b-06",
+      "paidOn": "2026-11-05",
+      "amountMinor": 240000,
+      "allocations": [
+        {
+          "chargeId": "ch-b06-nov",
+          "amountMinor": 240000
+        }
+      ]
+    }
+  ],
+  "residences": [
+    {
+      "id": "res-1",
+      "unitId": "a-12",
+      "personId": "p-2",
+      "startsOn": "2026-09-01",
+      "endsOn": null
+    },
+    {
+      "id": "res-2",
+      "unitId": "a-12",
+      "personId": "p-8",
+      "startsOn": "2026-09-01",
+      "endsOn": null
+    },
+    {
+      "id": "res-3",
+      "unitId": "a-08",
+      "personId": "p-5",
+      "startsOn": "2026-02-01",
+      "endsOn": null
+    },
+    {
+      "id": "res-4",
+      "unitId": "a-08",
+      "personId": "p-9",
+      "startsOn": "2026-02-01",
+      "endsOn": null
+    },
+    {
+      "id": "res-5",
+      "unitId": "a-03",
+      "personId": "p-7",
+      "startsOn": "2021-05-01",
+      "endsOn": null
+    },
+    {
+      "id": "res-6",
+      "unitId": "b-06",
+      "personId": "p-6",
+      "startsOn": "2020-01-01",
+      "endsOn": null
+    },
+    {
+      "id": "res-7",
+      "unitId": "b-14",
+      "personId": "p-3",
+      "startsOn": "2026-09-01",
+      "endsOn": null
+    },
+    {
+      "id": "res-8",
+      "unitId": "a-12",
+      "personId": "p-3",
+      "startsOn": "2024-01-15",
+      "endsOn": "2026-08-31"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+﻿flowchart LR
+    subgraph SR["Service"]
+        R["ServiceRequest<br/>Aggregate root"]
+        RC["RequestComment<br/>Separate append-only record"]
+        RE["RequestEvent<br/>Separate append-only history"]
+        RC -->|requestId| R
+        RE -->|requestId| R
+    end
+    subgraph COM["Communication"]
+        AN["Announcement<br/>Aggregate root"]
+        AU["Audience<br/>Embedded value object"]
+        AN -->|owns| AU
+    end
+    subgraph EX["Expenses"]
+        E["Expense<br/>Aggregate root"]
+        EP["ExpensePayment<br/>Aggregate root"]
+        FA["FinancialAccount<br/>Aggregate root"]
+        EP -->|expenseId| E
+        EP -->|accountId| FA
+    end
+    AT["Attachment<br/>Private metadata root"]
+    GF["GridFS<br/>File bytes, not a domain entity"]
+    R -->|photoIds, at most 3| AT
+    E -->|optional documentId| AT
+    AT -->|blobId| GF
+    OUT["DomainEvent<br/>Transactional outbox record"]
+    P["OutboxProjector<br/>Application service"]
+    APP["AppNotification<br/>Per-user record"]
+    R -.->|activity via application service| OUT
+    AN -.->|activity via application service| OUT
+    E -.->|activity via application service| OUT
+    OUT -->|after commit| P
+    P -->|membership and preferences checked| APP

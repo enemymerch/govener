@@ -1,10 +1,12 @@
-﻿# Govener — DDD Design Decisions
+# Govener — DDD Design Decisions
 
 Last updated: November 8, 2026
 
 This document records decisions discussed for the apartment and residential community management application. **Confirmed decisions** are separate from **draft proposals**. Draft proposals are not approved implementation requirements. When development starts with Qwen, unresolved questions must not be converted into business rules through assumptions.
 
 Documentation language: English. Discussion may continue in Turkish.
+
+Confirmed frontend language decision: the UI supports Turkish and English through i18n. The visible application brand is **yönetici**; the repository remains **Govener**.
 
 ## 1. Product and Technical Scope — Confirmed
 
@@ -66,6 +68,17 @@ Consequences:
 - A person may be both a manager and a resident.
 - Ownership or tenancy does not automatically grant management authority.
 - Ending management authority does not delete financial records or unit relationships.
+
+### DDD-004 — Resident Access to the Current Community Directory
+
+Residents may view the people currently living in their own units and in other units of the same community.
+
+Consequences:
+
+- Residence is explicit and separate from ownership, tenancy, and management permissions. Household members may be residents without being owners or tenants.
+- Resident directory access is read-only and shows current names and unit associations.
+- This access does not expand permission to view other units' finances, historical owner/tenant relationships, or historical residence records.
+- A dedicated resident projection is used rather than exposing the manager response and hiding fields in the UI.
 
 ## 4. Conceptual Model — Draft
 
@@ -145,22 +158,17 @@ Proposed payment notification statuses: `PENDING`, `ACCEPTED`, `REJECTED`, `WITH
 
 Payment allocation order, late-charge calculations, cancellation/reversal mechanisms, and charge-party determination remain undecided.
 
-## 7. Visibility — Open Decision
+## 7. Financial Visibility ? Confirmed
 
-The following approach has been proposed but has not been approved by the user:
+Residents may see financial records only for periods covered by their dated owner or tenant relationship with the unit. This decision applies to both owners and tenants. It determines visibility, not legal liability for a charge.
 
-- A tenant sees only charges and payments associated with them.
-- An owner sees the unit account for their ownership period.
-- A manager sees the unit's complete financial history within their authorized scope.
-- A new tenant is not automatically associated with historical debt.
+- Charge visibility uses the billing period, not the issue date. The relationship must cover the entire billing period; overlapping periods are not automatically prorated.
+- Payment visibility requires a payment date within the relationship period and visible allocated charges.
+- Resident account totals and statements are computed from visible records. The unit's unrestricted historical balance must not leak through summaries.
+- Managers retain complete financial history within their authorized scope.
+- New residents do not gain access to records preceding their relationship.
 
-The proposal must not be treated as an implemented rule until these questions are resolved:
-
-1. How should historical debt be shown to or hidden from a new resident?
-2. How should the unit's total balance be distinguished from the balance of transactions visible to a person?
-3. How long and to what extent may a person access historical records after their relationship ends?
-4. How should owner and tenant access differ within the same period?
-5. Who may access payer details and personal documents such as bank transfer receipts?
+Continued access after a relationship ends, partially overlapping billing periods, and access to another person's payer details or receipts require separate decisions. This decision does not grant those permissions.
 
 ## 8. Technical Design Principles — Proposed
 
@@ -185,3 +193,42 @@ The proposal must not be treated as an implemented rule until these questions ar
 7. Prepare Qwen development tasks with API contracts and acceptance criteria.
 
 The admin panel, subscriptions/pricing, management-company accounting, and online payments are outside the current development scope.
+
+## 10. Frontend Prototype Notes — Not Domain Approval
+
+The web prototype now includes resident payment notifications and manager review. Its temporary REVIEWED state means only that a notification has been inspected. It does not create a Payment, allocate funds, or change balances. This UI prototype does not approve the draft financial rules or replace the proposed domain lifecycle. Attachments and new records are held only in session memory.
+
+The read-only manager unit directory displays separate people, units, and dated relationships from synthetic fixtures. Its account summary separates charges, recorded payments, and allocations from payment notifications. No admin edits or financial writes are enabled. Date-boundary behavior is documented as a fixture-view convention and does not settle the open domain decisions.
+
+Resident directory access is now confirmed by DDD-004. The prototype serves a current-only resident fixture separately from the manager fixture. This supersedes the earlier manager-only directory restriction; financial visibility decisions remain unchanged.
+
+The frontend request prototype now uses explicit creator identity for resident visibility and supports descriptions, photos, comments, assignment, and status/assignment history. Announcement drafts/publication and community/block/unit audiences are implemented in the prototype. Residents cannot use editor routes or view drafts/out-of-audience announcements. These session-only behaviors do not replace server permissions or finalize the complete domain lifecycle, staff model, notification policy, or audit/versioning requirements.
+
+## 11. Phase-One Web Workflows and API Preparation
+
+The web frontend now includes charge batches, explicit payment allocations, unallocated credit, payment-notification matching, reasoned corrections, expense capture/payment/reversal, account movements, community/unit context selection, profile/preferences, notification reads and authentication previews.
+
+These are executable mock workflows, not a backend implementation or final approval of unresolved financial rules. The mock uses fixed explicit charge amounts, manual allocation and conservative correction behavior. It does not infer legal liability, historical resident visibility, proration, late fees or interest.
+
+A proposed OpenAPI 3.0.3 contract contains 59 operations and 69 schemas. Generated TypeScript DTOs/operation types, a typed HTTP client, repositories and wire/view adapters accompany it. See `docs/BACKEND-HANDOFF.md`, `docs/API-ENDPOINTS.md` and `docs/FRONTEND-READINESS.md` for scope, integration points, authority boundaries and outstanding decisions.
+
+The backend must enforce community membership, object scope, capabilities, file access, financial transaction consistency, optimistic versions and idempotency. Browser role switches, profile storage and mock session expiry are preview conveniences only. The current frontend remains on its in-memory store until server-backed reads/writes and session bootstrap are connected.
+
+## 12. Backend Implementation Decisions
+
+The manager/resident backend is now implemented in `backend/`. Earlier prototype notes describe the historical frontend state; the web workspace still uses that mock state until live integration is completed.
+
+- Domain models and application ports/use cases are plain Java. Spring Boot, MongoDB, HTTP, GridFS, mail, and cryptography remain in adapters or configuration.
+- Financial consistency spans charges, explicit allocations, unit-account summaries, financial accounts, account entries, notification links, audit records, and outbox events. Related changes commit in one MongoDB transaction.
+- Optimistic versions protect mutable aggregates. Financial command results and their payload fingerprints are stored atomically for idempotent retries.
+- Payments allocate only to explicitly selected same-unit charges. Excess remains credit without automatic allocation. A notification review does not record money; linking an existing payment does not create a second cash movement.
+- Payment reversal releases allocations and restores linked notifications to REVIEWED. An allocated charge cannot be cancelled before correcting its payments. Expense accrual, settlement, and settlement reversal are separate records.
+- Comments, request events, account movements, audit records, and outbox events use separate collections. Unit-account versions provide stable movement order when timestamps coincide.
+- The approved relationship-period financial visibility rule in section 7 is the default backend policy. It does not assign legal debt liability or grant access after a relationship ends.
+- Demo provisioning is enabled only in explicit development/test profiles. Admin onboarding, online payments, and company accounting remain outside the current scope.
+
+See [the backend guide](backend/README.md) for runtime configuration, architecture, limits, and verification commands. The current verification run passed 59 unit/architecture/contract tests and 26 real-HTTP Gherkin scenarios against a disposable MongoDB replica set. Frontend contract validation and its production build also passed. Live packaged-application startup, health, login, community context, and logout were verified against the Compose database.
+
+## 13. Live Web API Integration
+
+The web frontend now uses cookie sessions, server memberships/capabilities, paginated reads, private uploads, and versioned API commands. Backend projections supply financial totals. Local business fixtures and demo role entry have been removed. Browser tests use a separate disposable database; see the frontend guide for startup and verification. Admin and Android scope remain deferred.

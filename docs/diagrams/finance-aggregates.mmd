@@ -1,0 +1,83 @@
+﻿classDiagram
+    class Unit {
+        <<AggregateRoot>>
+        id
+    }
+    class UnitAccount {
+        <<AggregateRoot>>
+        unitId
+        chargedMinor
+        paidMinor
+        outstandingMinor
+        creditMinor
+    }
+    class Charge {
+        <<AggregateRoot>>
+        unitId
+        amount
+        allocatedMinor
+        allocate()
+        release()
+        cancel()
+    }
+    class Payment {
+        <<AggregateRoot>>
+        unitId
+        accountId
+        amount
+        reverse()
+        link()
+    }
+    class Allocation {
+        <<ValueObject>>
+        chargeId
+        amountMinor
+    }
+    class BillingPeriod {
+        <<ValueObject>>
+        start
+        end
+    }
+    class FinancialAccount {
+        <<AggregateRoot>>
+        openingMinor
+        balanceMinor
+        kind BANK or CASH
+        move()
+    }
+    class PaymentNotification {
+        <<AggregateRoot>>
+        userId
+        unitId
+        amount
+        paymentId
+        review()
+        record()
+        withdraw()
+    }
+    class AccountEntry {
+        <<PersistedRecord>>
+        unitId
+        sourceId
+        amountMinor
+        balanceAfterMinor
+    }
+    class ChargeBatch {
+        <<PersistedResult>>
+        charges
+        createdAt
+    }
+    UnitAccount --> Unit : unitId, unique per community and unit
+    Charge --> Unit : unitId
+    Charge *-- BillingPeriod : owns
+    Payment --> Unit : unitId
+    Payment --> FinancialAccount : accountId
+    Payment *-- Allocation : owns
+    Allocation --> Charge : chargeId
+    PaymentNotification --> Unit : unitId
+    PaymentNotification --> Payment : optional paymentId
+    Payment --> PaymentNotification : optional notificationId
+    AccountEntry --> Unit : unitId
+    AccountEntry ..> Charge : sourceId when charge movement
+    AccountEntry ..> Payment : sourceId when payment movement
+    ChargeBatch ..> Charge : embeds creation snapshots, not live ownership

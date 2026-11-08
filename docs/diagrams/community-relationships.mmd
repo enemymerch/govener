@@ -1,0 +1,66 @@
+﻿classDiagram
+    class Community {
+        <<AggregateRoot>>
+        id
+        name
+    }
+    class Unit {
+        <<AggregateRoot>>
+        id
+        communityId
+        blockId
+        blockLabel
+    }
+    class Person {
+        <<AggregateRoot>>
+        id
+        communityId
+        name
+    }
+    class UserAccount {
+        <<AggregateRoot>>
+        id
+        personId
+    }
+    class Membership {
+        <<AggregateRoot>>
+        communityId
+        userId
+        personId
+        roles
+        permissions
+    }
+    class UnitAccess {
+        <<ValueObject>>
+        unitId
+        startsOn
+        endsOn
+    }
+    class Relationship {
+        <<AggregateRoot>>
+        unitId
+        personId
+        type OWNER or TENANT
+        startsOn
+        endsOn
+    }
+    class Residence {
+        <<AggregateRoot>>
+        unitId
+        personId
+        startsOn
+        endsOn
+    }
+    Unit --> Community : communityId
+    Person --> Community : communityId
+    Membership --> Community : communityId
+    Membership --> UserAccount : userId
+    Membership --> Person : personId
+    UserAccount --> Person : personId reference
+    Membership *-- UnitAccess : owns access intervals
+    UnitAccess --> Unit : unitId
+    Relationship --> Unit : unitId
+    Relationship --> Person : personId
+    Residence --> Unit : unitId
+    Residence --> Person : personId
+    Relationship ..> UnitAccess : synchronization required, not automated
