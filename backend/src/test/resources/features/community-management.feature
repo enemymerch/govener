@@ -40,7 +40,7 @@ Feature: Manager and resident backend services
     When two payments compete for the same account version
     Then the workflow preserves its financial and access rules
 
-  Scenario: Financial history limited to the tenancy period
+  Scenario: Mid-month tenant sees joining-month debt but not earlier debt
     When a new tenant views retrospective and current charges
     Then the workflow preserves its financial and access rules
 
@@ -106,4 +106,8 @@ Feature: Manager and resident backend services
 
   Scenario: Login brute force protection
     When invalid credentials repeatedly attempt to sign in
+    Then the workflow preserves its financial and access rules
+
+  Scenario: Dues and other charge classification survives financial changes
+    When dues and other charges are classified and cancelled
     Then the workflow preserves its financial and access rules

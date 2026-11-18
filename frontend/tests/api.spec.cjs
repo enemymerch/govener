@@ -9,8 +9,8 @@ test("OpenAPI covers all operations and specifies financial mutation guards", ()
   const operations = Object.values(doc.paths).flatMap((item) =>
     Object.values(item),
   );
-  expect(operations).toHaveLength(59);
-  expect(new Set(operations.map((item) => item.operationId)).size).toBe(59);
+  expect(operations).toHaveLength(65);
+  expect(new Set(operations.map((item) => item.operationId)).size).toBe(65);
   for (const op of operations) {
     expect(op["x-access"]).toBeTruthy();
     expect(op.responses["409"]).toBeTruthy();

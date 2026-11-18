@@ -232,3 +232,7 @@ See [the backend guide](backend/README.md) for runtime configuration, architectu
 ## 13. Live Web API Integration
 
 The web frontend now uses cookie sessions, server memberships/capabilities, paginated reads, private uploads, and versioned API commands. Backend projections supply financial totals. Local business fixtures and demo role entry have been removed. Browser tests use a separate disposable database; see the frontend guide for startup and verification. Admin and Android scope remain deferred.
+
+## Unit-based polls
+
+The Poll aggregate owns immutable question/options, lifecycle and unit ballots. A unit is represented once regardless of the number of eligible people. Owners and physical residents are separate audiences resolved from current dated records; no combined audience exists. Multi-unit submissions, version checks and audit commit together. See [the poll domain guide](docs/POLLS.md) for the hexagonal boundaries, open-vote visibility and concurrency rules.

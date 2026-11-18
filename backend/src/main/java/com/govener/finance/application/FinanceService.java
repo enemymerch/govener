@@ -141,7 +141,8 @@ public final class FinanceService {
                     0,
                     null,
                     "",
-                    0);
+                    0,
+                    item.category());
             UnitAccount next = account.charge(item.amountMinor());
             store.charges().insert(charge);
             saveUnit(account, next);

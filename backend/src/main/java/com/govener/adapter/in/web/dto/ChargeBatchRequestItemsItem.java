@@ -14,4 +14,5 @@ public record ChargeBatchRequestItemsItem(
     @Valid @NotNull LocalDate dueOn,
     @Valid @NotNull @Min(1L) @Max(999999999L) Long amountMinor,
     @Valid @NotNull @Pattern(regexp = "TRY") String currency,
-    @Valid @NotNull @Min(0L) @Max(9007199254740991L) Long expectedAccountVersion) {}
+    @Valid @NotNull @Min(0L) @Max(9007199254740991L) Long expectedAccountVersion,
+    @Valid @Pattern(regexp = "DUES|OTHER|UNSPECIFIED") String category) {}

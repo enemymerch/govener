@@ -7,6 +7,7 @@ import java.util.*;
 
 /** Transport contract generated from docs/openapi.json; domain models are separate. */
 public record Charge(
+    @Valid @Pattern(regexp = "DUES|OTHER|UNSPECIFIED") String category,
     @Valid @NotNull @NotBlank @Size(min = 1, max = 100) String id,
     @Valid @NotNull @NotBlank @Size(min = 1, max = 100) String unitId,
     @Valid @NotNull @NotBlank @Size(min = 1, max = 300) String description,

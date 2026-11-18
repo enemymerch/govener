@@ -24,6 +24,7 @@ class EndpointContractTest {
     for (Class<?> controller :
         List.of(
             AuthController.class,
+            PollController.class,
             ProfileController.class,
             CommunityController.class,
             FinanceController.class,
@@ -41,6 +42,6 @@ class EndpointContractTest {
       }
     }
     assertThat(actual).doesNotHaveDuplicates().containsExactlyInAnyOrderElementsOf(expected);
-    assertThat(actual).hasSize(59);
+    assertThat(actual).hasSize(65);
   }
 }

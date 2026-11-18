@@ -77,3 +77,7 @@ Edit the OpenAPI builder, regenerate types, and validate with `npm run api:gener
 Admin UI, company accounting, online payment processing, native Android delivery, and business push/email notification delivery remain outside this release. Password reset delivery requires the backend SMTP configuration.
 
 The latest full browser run passed 26 tests against the real API and disposable MongoDB, including mobile layout/sign-out, 100+ record pagination, stale-response isolation, and uncertain financial retries. TypeScript/Vite build, OpenAPI drift validation, and formatting checks also passed.
+
+## Manager navigation
+
+The manager menu now groups financial work under Dues tracking, Balance and Other charges. Directory contains unit owner/tenant information. See [manager navigation and financial rules](../docs/MANAGER-NAVIGATION.md) for routes, charge classification, legacy records and responsive menu behavior. Managers and eligible residents can use the [unit-based polls](../docs/POLLS.md) feature, including open live results.

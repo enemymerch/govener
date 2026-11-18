@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { useSearchParams } from "wouter";
+import { Link, useLocation, useSearchParams } from "wouter";
 import { Plus, Wallet, X } from "lucide-react";
 import { useWorkspace } from "../../workspace/Workspace";
 import { useFormat } from "../../shared/useFormat";
@@ -11,6 +11,8 @@ import { errorKey, financialWrite } from "../../api/server";
 import { calendarDateInIstanbul } from "../../shared/calendar";
 import { useSession } from "../../session/Session";
 import AttachmentDownload from "../../shared/AttachmentDownload";
+import Payments from "../payments/Payments";
+import ChargeTracking from "./ChargeTracking";
 
 export default function Finance({ isManager }: { isManager: boolean }) {
   const { t } = useTranslation();
@@ -24,7 +26,16 @@ export default function Finance({ isManager }: { isManager: boolean }) {
   const source = state.paymentNotifications.find(
     (item) => item.id === notificationId,
   );
-  const [tab, setTab] = useState("charges");
+  const [path] = useLocation();
+  const section =
+    path === "/finance/balance"
+      ? "balance"
+      : path === "/finance/other"
+        ? "other"
+        : "dues";
+  const [tab, setTab] = useState(
+    section === "balance" ? "accounts" : "charges",
+  );
   const [form, setForm] = useState<"charge" | "receipt" | "expense" | null>(
     null,
   );
@@ -38,6 +49,13 @@ export default function Finance({ isManager }: { isManager: boolean }) {
     id: string;
   } | null>(null);
   const [reason, setReason] = useState("");
+  useEffect(() => {
+    setTab(section === "balance" ? "accounts" : "charges");
+    setForm(null);
+    setCorrection(null);
+    setError("");
+    setSuccess(false);
+  }, [section]);
   useEffect(() => {
     if (source && isManager) {
       setForm("receipt");
@@ -80,6 +98,8 @@ export default function Finance({ isManager }: { isManager: boolean }) {
             return {
               unitId: item.unitId,
               description: item.description,
+              category:
+                item.category ?? (section === "other" ? "OTHER" : "DUES"),
               amountMinor: item.amountMinor,
               currency: "TRY" as const,
               periodStart: item.period,
@@ -322,8 +342,58 @@ export default function Finance({ isManager }: { isManager: boolean }) {
   }
   return (
     <div className="finance-feature">
+      <nav
+        className="finance-sections"
+        aria-label={t("manager.financeSections")}
+      >
+        {(
+          [
+            ["dues", "/finance"],
+            ["balance", "/finance/balance"],
+            ["other", "/finance/other"],
+          ] as const
+        ).map(([key, href]) => (
+          <Link
+            key={key}
+            href={href}
+            className={section === key ? "active" : ""}
+            aria-current={section === key ? "page" : undefined}
+          >
+            {t("manager." + key)}
+          </Link>
+        ))}
+      </nav>
+      <p className="section-help">{t("manager." + section + "Help")}</p>
+      {section === "balance" && (
+        <section className="balance-cards">
+          {finance.accounts.map((account) => (
+            <article className="panel" key={account.id}>
+              <Wallet size={22} />
+              <span>{t("finance.kind." + account.kind)}</span>
+              <h2>{account.name}</h2>
+              <strong>{moneyMinor(account.balanceMinor ?? 0)}</strong>
+              {account.kind === "BANK" && (
+                <p>
+                  {account.bankName || account.iban ? (
+                    <>
+                      {account.bankName}
+                      <br />
+                      {account.iban}
+                    </>
+                  ) : (
+                    t("manager.bankDetailsMissing")
+                  )}
+                </p>
+              )}
+            </article>
+          ))}
+        </section>
+      )}
       <div className="finance-toolbar">
         {(["charge", "receipt", "expense"] as const)
+          .filter((mode) =>
+            section === "balance" ? mode === "expense" : mode !== "expense",
+          )
           .filter((mode) =>
             can(
               mode === "charge"
@@ -345,7 +415,13 @@ export default function Finance({ isManager }: { isManager: boolean }) {
               }}
             >
               <Plus size={15} />
-              {t(`finance.new.${mode}`)}
+              {t(
+                mode === "charge"
+                  ? section === "dues"
+                    ? "manager.createDues"
+                    : "manager.createOther"
+                  : `finance.new.${mode}`,
+              )}
             </button>
           ))}
       </div>
@@ -615,14 +691,23 @@ export default function Finance({ isManager }: { isManager: boolean }) {
         </section>
       )}
       <div className="unit-tabs">
-        {["charges", "receipts", "expenses", "accounts"].map((value) => (
+        {(section === "balance"
+          ? ["accounts", "expenses"]
+          : ["charges", "receipts", "notifications"]
+        ).map((value) => (
           <button
             key={value}
             className={tab === value ? "active" : ""}
             aria-pressed={tab === value}
             onClick={() => setTab(value)}
           >
-            {t(`finance.tab.${value}`)}
+            {t(
+              value === "notifications"
+                ? "Payments"
+                : value === "charges"
+                  ? "manager." + section
+                  : `finance.tab.${value}`,
+            )}
           </button>
         ))}
       </div>
@@ -653,183 +738,153 @@ export default function Finance({ isManager }: { isManager: boolean }) {
           </div>
         </section>
       )}
-      <section className="panel">
-        <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>{t("DESCRIPTION")}</th>
-                <th>{t("AMOUNT")}</th>
-                <th>{t("STATUS")}</th>
-                <th>{t("ACTION")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tab === "charges" &&
-                finance.charges.map((charge) => (
-                  <tr key={charge.id}>
-                    <td>
-                      <strong>
-                        {charge.custom
-                          ? charge.description
-                          : t(charge.description)}
-                      </strong>
-                      <small>
-                        {unitLabel(charge.unitId)} · {date(charge.dueOn)}
-                      </small>
-                      {charge.reason && <small>{charge.reason}</small>}
-                    </td>
-                    <td>{moneyMinor(charge.amountMinor)}</td>
-                    <td>
-                      {t(
-                        charge.cancelledAt
-                          ? "finance.cancelled"
-                          : allocatedTo(finance, charge.id) ===
-                              charge.amountMinor
-                            ? "Paid"
-                            : "Outstanding",
-                      )}
-                    </td>
-                    <td>
-                      {!charge.cancelledAt && can("CHARGE_CREATE") && (
-                        <button
-                          className="text-button"
-                          disabled={busy || !!refreshError}
-                          onClick={() => {
-                            setCorrection({
-                              type: "CANCEL_CHARGE",
-                              id: charge.id,
-                            });
-                            setReason("");
-                          }}
-                        >
-                          {t("finance.cancelCharge")}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              {tab === "receipts" &&
-                finance.payments.map((payment) => (
-                  <tr key={payment.id}>
-                    <td>
-                      <strong>{payment.reference}</strong>
-                      <small>
-                        {unitLabel(payment.unitId)} · {date(payment.paidOn)}
-                      </small>
-                      {payment.notificationId && (
-                        <small>{payment.notificationId}</small>
-                      )}
-                      {payment.reason && <small>{payment.reason}</small>}
-                    </td>
-                    <td>{moneyMinor(payment.amountMinor)}</td>
-                    <td>
-                      {t(
-                        payment.reversedAt
-                          ? "finance.reversed"
-                          : "finance.recorded",
-                      )}
-                    </td>
-                    <td>
-                      {!payment.reversedAt && can("PAYMENT_RECORD") && (
-                        <button
-                          className="text-button"
-                          disabled={busy || !!refreshError}
-                          onClick={() => {
-                            setCorrection({
-                              type: "REVERSE_PAYMENT",
-                              id: payment.id,
-                            });
-                            setReason("");
-                          }}
-                        >
-                          {t("finance.reverse")}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              {tab === "expenses" &&
-                finance.expenses.map((expense) => {
-                  const payment = finance.expensePayments.find(
-                    (item) => item.expenseId === expense.id && !item.reversedAt,
-                  );
-                  return (
-                    <tr key={expense.id}>
+      {tab === "notifications" ? (
+        <Payments isManager={true} notifications={state.paymentNotifications} />
+      ) : tab === "charges" ? (
+        <ChargeTracking
+          key={section}
+          category={section === "other" ? "OTHER" : "DUES"}
+          onCancel={(id) => {
+            setCorrection({ type: "CANCEL_CHARGE", id });
+            setReason("");
+          }}
+        />
+      ) : (
+        <section className="panel">
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>{t("DESCRIPTION")}</th>
+                  <th>{t("AMOUNT")}</th>
+                  <th>{t("STATUS")}</th>
+                  <th>{t("ACTION")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tab === "receipts" &&
+                  finance.payments.map((payment) => (
+                    <tr key={payment.id}>
                       <td>
-                        <strong>{expense.description}</strong>
+                        <strong>{payment.reference}</strong>
                         <small>
-                          {expense.vendor} · {date(expense.incurredOn)}
+                          {unitLabel(payment.unitId)} · {date(payment.paidOn)}
                         </small>
-                        {expense.document && (
-                          <AttachmentDownload file={expense.document} />
+                        {payment.notificationId && (
+                          <small>{payment.notificationId}</small>
                         )}
+                        {payment.reason && <small>{payment.reason}</small>}
                       </td>
-                      <td>{moneyMinor(expense.amountMinor)}</td>
+                      <td>{moneyMinor(payment.amountMinor)}</td>
                       <td>
                         {t(
-                          (expense.paidMinor ?? 0) >= expense.amountMinor
-                            ? "Paid"
-                            : "Outstanding",
+                          payment.reversedAt
+                            ? "finance.reversed"
+                            : "finance.recorded",
                         )}
                       </td>
                       <td>
-                        {!can("EXPENSE_WRITE") ? (
-                          "?"
-                        ) : payment ? (
+                        {!payment.reversedAt && can("PAYMENT_RECORD") && (
                           <button
                             className="text-button"
                             disabled={busy || !!refreshError}
                             onClick={() => {
                               setCorrection({
-                                type: "REVERSE_EXPENSE_PAYMENT",
+                                type: "REVERSE_PAYMENT",
                                 id: payment.id,
                               });
                               setReason("");
                             }}
                           >
-                            {t("finance.reverseExpense")}
-                          </button>
-                        ) : (
-                          <button
-                            className="text-button"
-                            disabled={busy || !!refreshError}
-                            onClick={() =>
-                              commit({
-                                type: "PAY_EXPENSE",
-                                expenseId: expense.id,
-                                accountId: finance.accounts[0]?.id ?? "",
-                                paidOn: today,
-                              })
-                            }
-                          >
-                            {t("finance.payExpense")}
+                            {t("finance.reverse")}
                           </button>
                         )}
                       </td>
                     </tr>
-                  );
-                })}
-              {tab === "accounts" &&
-                finance.accounts.map((account) => (
-                  <tr key={account.id}>
-                    <td>
-                      <Wallet size={16} /> {t(account.name)}
-                    </td>
-                    <td>{moneyMinor(account.balanceMinor ?? 0)}</td>
-                    <td>{t(`finance.kind.${account.kind}`)}</td>
-                    <td>—</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-        {((tab === "expenses" && !finance.expenses.length) ||
-          (tab === "receipts" && !finance.payments.length) ||
-          (tab === "charges" && !finance.charges.length)) && (
-          <p className="empty-state">{t("finance.empty")}</p>
-        )}
-      </section>
+                  ))}
+                {tab === "expenses" &&
+                  finance.expenses.map((expense) => {
+                    const payment = finance.expensePayments.find(
+                      (item) =>
+                        item.expenseId === expense.id && !item.reversedAt,
+                    );
+                    return (
+                      <tr key={expense.id}>
+                        <td>
+                          <strong>{expense.description}</strong>
+                          <small>
+                            {expense.vendor} · {date(expense.incurredOn)}
+                          </small>
+                          {expense.document && (
+                            <AttachmentDownload file={expense.document} />
+                          )}
+                        </td>
+                        <td>{moneyMinor(expense.amountMinor)}</td>
+                        <td>
+                          {t(
+                            (expense.paidMinor ?? 0) >= expense.amountMinor
+                              ? "Paid"
+                              : "Outstanding",
+                          )}
+                        </td>
+                        <td>
+                          {!can("EXPENSE_WRITE") ? (
+                            "?"
+                          ) : payment ? (
+                            <button
+                              className="text-button"
+                              disabled={busy || !!refreshError}
+                              onClick={() => {
+                                setCorrection({
+                                  type: "REVERSE_EXPENSE_PAYMENT",
+                                  id: payment.id,
+                                });
+                                setReason("");
+                              }}
+                            >
+                              {t("finance.reverseExpense")}
+                            </button>
+                          ) : (
+                            <button
+                              className="text-button"
+                              disabled={busy || !!refreshError}
+                              onClick={() =>
+                                commit({
+                                  type: "PAY_EXPENSE",
+                                  expenseId: expense.id,
+                                  accountId: finance.accounts[0]?.id ?? "",
+                                  paidOn: today,
+                                })
+                              }
+                            >
+                              {t("finance.payExpense")}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                {tab === "accounts" &&
+                  finance.accounts.map((account) => (
+                    <tr key={account.id}>
+                      <td>
+                        <Wallet size={16} /> {t(account.name)}
+                      </td>
+                      <td>{moneyMinor(account.balanceMinor ?? 0)}</td>
+                      <td>{t(`finance.kind.${account.kind}`)}</td>
+                      <td>—</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+          {((tab === "expenses" && !finance.expenses.length) ||
+            (tab === "receipts" && !finance.payments.length) ||
+            (tab === "charges" && !finance.charges.length)) && (
+            <p className="empty-state">{t("finance.empty")}</p>
+          )}
+        </section>
+      )}
       {tab === "expenses" && finance.expensePayments.length > 0 && (
         <section className="panel expense-audit">
           <div className="section-heading">
@@ -854,30 +909,6 @@ export default function Finance({ isManager }: { isManager: boolean }) {
           ))}
         </section>
       )}
-      <div className="payment-summary finance-totals">
-        <div>
-          <span>{t("Outstanding charges")}</span>
-          <strong>
-            {moneyMinor(
-              state.unitAccounts.reduce(
-                (sum, account) => sum + account.outstandingMinor,
-                0,
-              ),
-            )}
-          </strong>
-        </div>
-        <div>
-          <span>{t("finance.totalCredit")}</span>
-          <strong>
-            {moneyMinor(
-              state.unitAccounts.reduce(
-                (sum, account) => sum + account.creditMinor,
-                0,
-              ),
-            )}
-          </strong>
-        </div>
-      </div>
     </div>
   );
 }

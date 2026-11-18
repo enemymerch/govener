@@ -26,6 +26,11 @@ public interface FinancialVisibility {
                     access ->
                         access.unitId().equals(charge.unitId())
                             && access.active(today)
-                            && access.covers(charge.period().start(), charge.period().end()));
+                            && !charge
+                                .period()
+                                .start()
+                                .isBefore(access.startsOn().withDayOfMonth(1))
+                            && (access.endsOn() == null
+                                || !charge.period().end().isAfter(access.endsOn())));
   }
 }

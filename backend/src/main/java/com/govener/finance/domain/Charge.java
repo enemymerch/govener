@@ -15,9 +15,42 @@ public record Charge(
     long allocatedMinor,
     Instant cancelledAt,
     String cancellationReason,
-    long version)
+    long version,
+    String category)
     implements ScopedAggregate {
+  public Charge(
+      String id,
+      String communityId,
+      String unitId,
+      String description,
+      BillingPeriod period,
+      LocalDate issuedOn,
+      LocalDate dueOn,
+      Money amount,
+      long allocatedMinor,
+      Instant cancelledAt,
+      String cancellationReason,
+      long version) {
+    this(
+        id,
+        communityId,
+        unitId,
+        description,
+        period,
+        issuedOn,
+        dueOn,
+        amount,
+        allocatedMinor,
+        cancelledAt,
+        cancellationReason,
+        version,
+        "UNSPECIFIED");
+  }
+
   public Charge {
+    category = category == null ? "UNSPECIFIED" : category;
+    if (!java.util.Set.of("DUES", "OTHER", "UNSPECIFIED").contains(category))
+      throw RuleViolation.invalid("Invalid charge category.");
     Checks.id(id);
     Checks.id(communityId);
     Checks.id(unitId);
@@ -76,6 +109,7 @@ public record Charge(
         allocated,
         cancelled,
         reason,
-        version + 1);
+        version + 1,
+        category);
   }
 }

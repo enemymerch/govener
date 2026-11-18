@@ -72,7 +72,7 @@ Example: a parent may be the owner, a tenant may sign in, another family member 
 
 ### The important access-model gap
 
-The confirmed product rule limits resident financial history to owner/tenant relationship periods. The current `FinancialVisibility.relationshipPeriod()` implementation reads **`Membership.units` / `UnitAccess`**, not the `Relationship` repository. Its charge check requires an access interval active today that covers the entire billing period. `FinanceQueries.payments()` additionally checks the payment date and the visibility of all allocated charges.
+The confirmed product rule limits resident financial history to owner/tenant relationship periods. The current `FinancialVisibility.relationshipPeriod()` implementation reads **`Membership.units` / `UnitAccess`**, not the `Relationship` repository. Its charge check requires an access interval active today. For charge visibility, the start is rounded back to the first day of the joining month; previous-month and cross-boundary billing periods remain hidden. The relationship end is not extended, and amounts are not prorated. `FinanceQueries.payments()` additionally checks the payment date and the visibility of all allocated charges.
 
 There is currently no application workflow that automatically derives or synchronizes these access grants when owner/tenant relationships change. Seed/provisioning data supplies them separately. Therefore, describing the implementation as if `Relationship` directly grants or revokes financial access would be inaccurate. Relationship/access consistency is a concrete improvement candidate, while keeping management authority separate.
 

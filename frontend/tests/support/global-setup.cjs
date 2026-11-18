@@ -84,7 +84,7 @@ module.exports = async () => {
         `--spring.data.mongodb.uri=mongodb://127.0.0.1:${mapped}/govener_browser?replicaSet=rs0&directConnection=true`,
         "--debug=false",
         "--trace=false",
-        "--app.allowed-origins=http://127.0.0.1:4175",
+        "--app.allowed-origins=http://127.0.0.1:4175,http://127.0.0.1:4176",
       ],
       { cwd: root, windowsHide: true, stdio: ["ignore", log, log] },
     );
@@ -112,7 +112,7 @@ module.exports = async () => {
           "govener_browser",
           "--quiet",
           "--eval",
-          "Boolean(db.memberships.findOne({_id:'resident-membership'}))",
+          "Boolean(db.admin_authorities.findOne({'data.role':'ADMIN'}))",
         ]).includes("true")
       ) {
         seeded = true;

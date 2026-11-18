@@ -14,7 +14,27 @@ public final class FinanceCommands {
       LocalDate periodEnd,
       LocalDate dueOn,
       long amountMinor,
-      long expectedAccountVersion) {}
+      long expectedAccountVersion,
+      String category) {
+    public ChargeItem(
+        String unitId,
+        String description,
+        LocalDate periodStart,
+        LocalDate periodEnd,
+        LocalDate dueOn,
+        long amountMinor,
+        long expectedAccountVersion) {
+      this(
+          unitId,
+          description,
+          periodStart,
+          periodEnd,
+          dueOn,
+          amountMinor,
+          expectedAccountVersion,
+          "UNSPECIFIED");
+    }
+  }
 
   public record ChargeBatch(List<ChargeItem> items) {
     public ChargeBatch {

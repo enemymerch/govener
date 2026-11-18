@@ -6,6 +6,7 @@ test("expenses settle and reverse through the financial service", async ({
 }) => {
   await login(page);
   await page.locator('nav a[href="/finance"]').click();
+  await page.getByRole("link", { name: "Balance", exact: true }).click();
   await page
     .getByRole("button", { name: "Record expense", exact: true })
     .click();
@@ -73,7 +74,10 @@ test("manager notification review does not create a financial payment", async ({
   const before = await (
     await page.request.get(SITE + "/unit-accounts/a12")
   ).json();
-  await page.locator('nav a[href="/payments"]').click();
+  await page.locator('nav a[href="/finance"]').click();
+  await page
+    .getByRole("button", { name: "Payment notifications", exact: true })
+    .click();
   const row = page.locator(".payment-row").filter({ hasText: reference });
   await row
     .getByRole("button", { name: "Review notification", exact: true })
@@ -88,6 +92,9 @@ test("manager notification review does not create a financial payment", async ({
   ).json();
   expect(after.paidMinor).toBe(before.paidMinor);
   await page.reload();
+  await page
+    .getByRole("button", { name: "Payment notifications", exact: true })
+    .click();
   await expect(
     page.locator(".payment-row").filter({ hasText: reference }),
   ).toContainText("Reviewed");

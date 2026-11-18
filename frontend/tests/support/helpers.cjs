@@ -34,6 +34,12 @@ async function login(page, user = "manager", route = "/login") {
     await page
       .getByRole("combobox", { name: "Language", exact: true })
       .selectOption("en");
+  const drawerClosed =
+    (await page
+      .getByRole("button", { name: "Open menu", exact: true })
+      .count()) > 0;
+  if (drawerClosed)
+    await page.getByRole("button", { name: "Open menu", exact: true }).click();
   if (
     route === "/login" &&
     (await page
@@ -43,6 +49,11 @@ async function login(page, user = "manager", route = "/login") {
     await page
       .getByRole("combobox", { name: "Community", exact: true })
       .selectOption("olive-gardens");
+  if (drawerClosed) {
+    await expect(page.locator(".app-shell")).toBeVisible();
+    if (await page.locator(".sidebar-close").isVisible())
+      await page.locator(".sidebar-close").click();
+  }
   await expect(page.locator(".app-shell")).toBeVisible();
 }
 async function command(page, path, body, key) {
@@ -74,6 +85,7 @@ async function charge(page, amount = 10000, unit = "a12") {
       items: [
         {
           unitId: unit,
+          category: "DUES",
           description: "Browser assessment " + Date.now(),
           periodStart: month + "-01",
           periodEnd: end,

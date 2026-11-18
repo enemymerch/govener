@@ -2,6 +2,8 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import en from "./locales/en.json";
 import tr from "./locales/tr.json";
+import { pollsEn, pollsTr } from "./locales/polls";
+import { managerEn, managerTr } from "./locales/manager";
 
 export const languageStorageKey = "govener.language";
 function storedLanguage(): "en" | "tr" {
@@ -21,7 +23,10 @@ function applyLanguage(language: string) {
   }
 }
 void i18n.use(initReactI18next).init({
-  resources: { en: { translation: en }, tr: { translation: tr } },
+  resources: {
+    en: { translation: { ...en, ...managerEn, ...pollsEn } },
+    tr: { translation: { ...tr, ...managerTr, ...pollsTr } },
+  },
   lng: storedLanguage(),
   supportedLngs: ["tr", "en"],
   fallbackLng: "en",

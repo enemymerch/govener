@@ -7,6 +7,7 @@ export type Page =
   | "Payments"
   | "Units"
   | "Finance"
+  | "Polls"
   | "Profile"
   | "Notifications"
   | "NotFound";
@@ -19,11 +20,13 @@ export const pagePaths: Record<Exclude<Page, "NotFound">, string> = {
   Payments: "/payments",
   Units: "/units",
   Finance: "/finance",
+  Polls: "/polls",
   Profile: "/profile",
   Notifications: "/notifications",
 };
 
 export function resolvePage(path: string): Page {
+  if (path.startsWith("/finance/")) return "Finance";
   if (/^\/account\/[^/]+$/.test(path)) return "Account";
   if (/^\/units\/[^/]+$/.test(path)) return "Units";
   if (/^\/requests\/[^/]+$/.test(path)) return "Requests";

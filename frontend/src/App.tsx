@@ -17,11 +17,14 @@ import {
   LayoutDashboard,
   LogOut,
   Megaphone,
+  Menu,
+  Vote,
   Plus,
   RefreshCw,
   Wallet,
   X,
 } from "lucide-react";
+import Polls from "./features/polls/Polls";
 import Finance from "./features/finance/Finance";
 import Profile from "./features/profile/Profile";
 import Notifications from "./features/notifications/Notifications";
@@ -118,6 +121,38 @@ function WorkspaceApp() {
     .map((part) => part[0])
     .slice(0, 2)
     .join("");
+  const [mobile, setMobile] = useState(() => window.innerWidth <= 800);
+  const menuToggle = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 800px)");
+    const changed = () => {
+      setMobile(media.matches);
+      setMenuOpen(!media.matches);
+    };
+    media.addEventListener("change", changed);
+    return () => media.removeEventListener("change", changed);
+  }, []);
+  const [menuOpen, setMenuOpen] = useState(() => window.innerWidth > 800);
+  useEffect(() => {
+    if (window.innerWidth <= 800) setMenuOpen(false);
+  }, [path]);
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, []);
+  useEffect(() => {
+    if (!mobile || !menuOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.querySelector<HTMLButtonElement>(".sidebar-close")?.focus();
+    return () => {
+      document.body.style.overflow = previous;
+      menuToggle.current?.focus();
+    };
+  }, [mobile, menuOpen]);
   const [modal, setModal] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -157,7 +192,7 @@ function WorkspaceApp() {
           : value === "Units"
             ? can("DIRECTORY_READ") || (isManager && can("UNIT_READ"))
             : true;
-  const navigation: {
+  const residentNavigation: {
     page: Exclude<Page, "NotFound">;
     label: string;
     icon: ReactNode;
@@ -183,6 +218,7 @@ function WorkspaceApp() {
       label: "Announcements",
       icon: <Megaphone size={19} />,
     },
+    { page: "Polls", label: "manager.polls", icon: <Vote size={19} /> },
     {
       page: "Units",
       label: isManager ? "Units" : "directory.title",
@@ -192,6 +228,33 @@ function WorkspaceApp() {
     { page: "Profile", label: "Profile", icon: <Building2 size={19} /> },
     { page: "Notifications", label: "Notifications", icon: <Bell size={19} /> },
   ];
+  const managerNavigation: typeof residentNavigation = [
+    {
+      page: "Overview",
+      label: "Overview",
+      icon: <LayoutDashboard size={19} />,
+    },
+    {
+      page: "Units",
+      label: "manager.directory",
+      icon: <Building2 size={19} />,
+    },
+    { page: "Finance", label: "Finance", icon: <Wallet size={19} /> },
+    {
+      page: "Announcements",
+      label: "Announcements",
+      icon: <Megaphone size={19} />,
+    },
+    {
+      page: "Requests",
+      label: "Service requests",
+      icon: <ClipboardList size={19} />,
+    },
+    { page: "Polls", label: "manager.polls", icon: <Vote size={19} /> },
+    { page: "Profile", label: "Profile", icon: <Building2 size={19} /> },
+    { page: "Notifications", label: "Notifications", icon: <Bell size={19} /> },
+  ];
+  const navigation = isManager ? managerNavigation : residentNavigation;
   const goTo = (next: Page) => {
     if (next !== "NotFound") navigate(pagePaths[next]);
   };
@@ -248,16 +311,55 @@ function WorkspaceApp() {
           ? t("Service requests")
           : page === "Announcements"
             ? t("Community announcements")
-            : page === "Units" && !isManager
-              ? t("directory.title")
-              : t(page);
+            : page === "Units" && isManager
+              ? t("manager.directory")
+              : page === "Polls"
+                ? t("manager.polls")
+                : page === "Units" && !isManager
+                  ? t("directory.title")
+                  : t(page);
   const routeAllowed = allowed(page);
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${menuOpen ? "menu-open" : "menu-closed"}`}>
       <a className="skip-link" href="#main-content">
         {t("navigation.skip")}
       </a>
-      <aside className="sidebar">
+      {menuOpen && (
+        <button
+          className="sidebar-scrim"
+          aria-label={t("manager.closeMenu")}
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
+      <aside
+        className="sidebar"
+        id="main-navigation"
+        inert={!menuOpen}
+        onKeyDown={(event) => {
+          if (!mobile || event.key !== "Tab") return;
+          const items = [
+            ...event.currentTarget.querySelectorAll<HTMLElement>(
+              "a[href],button:not(:disabled),select:not(:disabled),input:not(:disabled)",
+            ),
+          ].filter((item) => item.getClientRects().length > 0);
+          const first = items[0],
+            last = items[items.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last?.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first?.focus();
+          }
+        }}
+      >
+        <button
+          className="icon-button sidebar-close"
+          aria-label={t("manager.closeMenu")}
+          onClick={() => setMenuOpen(false)}
+        >
+          <X size={20} />
+        </button>
         <Brand />
         <div className="workspace">
           <span className="workspace-icon">
@@ -287,7 +389,7 @@ function WorkspaceApp() {
                 aria-current={page === item.page ? "page" : undefined}
               >
                 {item.icon}
-                {t(item.label)}
+                <span>{t(item.label)}</span>
                 {item.page === "Requests" && (
                   <span className="count">
                     {
@@ -320,11 +422,27 @@ function WorkspaceApp() {
           </button>
         </div>
       </aside>
-      <div className="main-shell">
+      <div className="main-shell" inert={mobile && menuOpen}>
         <header className="topbar">
+          <button
+            ref={menuToggle}
+            className="icon-button menu-toggle"
+            aria-label={t(menuOpen ? "manager.closeMenu" : "manager.openMenu")}
+            aria-expanded={menuOpen}
+            aria-controls="main-navigation"
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            <Menu size={22} />
+          </button>
           <span>
             {t("Workspace")} <span className="breadcrumb">/</span>{" "}
-            <strong>{t(page)}</strong>
+            <strong>
+              {page === "Units" && isManager
+                ? t("manager.directory")
+                : page === "Polls"
+                  ? t("manager.polls")
+                  : t(page)}
+            </strong>
           </span>
           <div className="topbar-actions">
             <LanguageSwitcher />
@@ -465,6 +583,7 @@ function WorkspaceApp() {
                   requestId={requestParams.requestId}
                 />
               )}
+              {page === "Polls" && <Polls key={communityId} />}
               {page === "Account" && (
                 <Account
                   key={communityId}

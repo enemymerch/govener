@@ -1,0 +1,92 @@
+name: govener-pilot
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+services:
+  mongodb:
+    image: mongo:8.0.12
+    restart: unless-stopped
+    entrypoint: ["bash", "-c", "cp /run/secrets/mongo_keyfile /tmp/mongo-keyfile && chmod 400 /tmp/mongo-keyfile && chown mongodb:mongodb /tmp/mongo-keyfile && exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --auth --keyFile /tmp/mongo-keyfile --wiredTigerCacheSizeGB 0.5"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: govener_root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: govener
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?Set MONGO_APP_PASSWORD}
+    secrets: [mongo_keyfile]
+    volumes:
+      - mongo_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/10-app-user.js:ro,Z
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --host localhost -u govener_root -p \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --eval 'try { rs.status() } catch (error) { rs.initiate({_id:\"rs0\",members:[{_id:0,host:\"mongodb:27017\"}]}) }; if (!db.hello().isWritablePrimary) quit(1)' >/dev/null"]
+      interval: 10s
+      timeout: 8s
+      start_period: 40s
+      retries: 15
+    mem_limit: 1200m
+    logging: *logging
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/backend.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      GOVENER_MONGODB_URI: mongodb://govener_app:${MONGO_APP_PASSWORD:?Set MONGO_APP_PASSWORD}@mongodb:27017/govener?authSource=govener&replicaSet=rs0&directConnection=true
+      GOVENER_CURSOR_SECRET: ${GOVENER_CURSOR_SECRET:?Set GOVENER_CURSOR_SECRET}
+      GOVENER_ALLOWED_ORIGINS: https://${GOVENER_HOST:?Set GOVENER_HOST}
+      GOVENER_ROOT_NAME: ${GOVENER_ROOT_NAME:-System Root}
+      GOVENER_ROOT_EMAIL: ${GOVENER_ROOT_EMAIL:?Set GOVENER_ROOT_EMAIL}
+      GOVENER_ROOT_PASSWORD: ${GOVENER_ROOT_PASSWORD:-}
+      GOVENER_MAIL_ENABLED: "false"
+      GOVENER_RESET_URL: https://${GOVENER_HOST}/reset-password
+    command: ["--app.root-bootstrap.enabled=${GOVENER_ROOT_BOOTSTRAP_ENABLED:-false}"]
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    mem_limit: 1800m
+    logging: *logging
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      GOVENER_HOST: ${GOVENER_HOST:?Set GOVENER_HOST}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: 256m
+    logging: *logging
+  backup:
+    image: mongo:8.0.12
+    user: "1000:1000"
+    profiles: [maintenance]
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD}
+    entrypoint: ["bash", "-c", "umask 077; mongodump --host mongodb -u govener_root -p \"$$MONGO_ROOT_PASSWORD\" --authenticationDatabase admin --oplog --archive=/backups/govener-$$(date -u +%Y%m%dT%H%M%SZ).archive.gz --gzip"]
+    volumes:
+      - ./backups:/backups:Z
+    logging: *logging
+secrets:
+  mongo_keyfile:
+    file: ${GOVENER_MONGO_KEYFILE:?Set GOVENER_MONGO_KEYFILE}
+volumes:
+  mongo_data:
+  caddy_data:
+  caddy_config:

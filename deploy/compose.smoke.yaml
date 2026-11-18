@@ -1,0 +1,13 @@
+# Isolated production-profile verification. Requires Docker Compose 2.24.4+.
+# This override binds only localhost and uses its own project/volumes.
+name: govener-pilot-smoke
+services:
+  backend:
+    image: govener-pilot-backend
+    environment:
+      GOVENER_ALLOWED_ORIGINS: https://localhost:18443
+  web:
+    image: govener-pilot-web
+    ports: !override
+      - "127.0.0.1:18085:80"
+      - "127.0.0.1:18443:443"

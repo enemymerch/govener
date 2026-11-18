@@ -2,7 +2,7 @@ package com.govener.configuration;
 
 import java.time.Duration;
 import java.util.List;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -18,13 +18,15 @@ public final class MongoIndexes {
     this.mongo = mongo;
   }
 
-  @EventListener(ApplicationReadyEvent.class)
+  @EventListener(ApplicationStartedEvent.class)
   public void create() {
     for (String name :
         List.of(
             "users",
+            "admin_authorities",
             "password_resets",
             "communities",
+            "polls",
             "units",
             "people",
             "memberships",
@@ -55,6 +57,14 @@ public final class MongoIndexes {
           .createIndex(
               new Index().on("communityId", Sort.Direction.ASC).on("_id", Sort.Direction.ASC));
     }
+    mongo
+        .indexOps("units")
+        .createIndex(
+            new Index()
+                .on("communityId", Sort.Direction.ASC)
+                .on("data.blockId", Sort.Direction.ASC)
+                .on("data.label", Sort.Direction.ASC)
+                .unique());
     mongo
         .indexOps("users")
         .createIndex(new Index().on("data.loginEmail", Sort.Direction.ASC).unique());

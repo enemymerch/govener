@@ -150,7 +150,8 @@ public class FinanceController {
                                 item.periodEnd(),
                                 item.dueOn(),
                                 item.amountMinor(),
-                                item.expectedAccountVersion()))
+                                item.expectedAccountVersion(),
+                                item.category()))
                     .toList())));
   }
 

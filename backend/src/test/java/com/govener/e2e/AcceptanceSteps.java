@@ -300,6 +300,7 @@ public class AcceptanceSteps {
 
   @When("the second item in a charge batch has a stale version")
   public void batchRollback() throws Exception {
+    long initialAudits = mongo.getCollection("audit_records").countDocuments();
     charge("a03", 20000, 0);
     call(
         "manager",
@@ -314,7 +315,7 @@ public class AcceptanceSteps {
         409);
     assertThat(amount("manager", SITE + "/unit-accounts/a12", "chargedMinor")).isZero();
     assertThat(mongo.getCollection("charges").countDocuments()).isEqualTo(1);
-    assertThat(mongo.getCollection("audit_records").countDocuments()).isEqualTo(1);
+    assertThat(mongo.getCollection("audit_records").countDocuments()).isEqualTo(initialAudits + 1);
     verified = true;
   }
 
@@ -415,6 +416,12 @@ public class AcceptanceSteps {
 
   @When("a new tenant views retrospective and current charges")
   public void history() throws Exception {
+    mongo
+        .getCollection("memberships")
+        .updateOne(
+            new org.bson.Document("_id", "resident-membership"),
+            new org.bson.Document(
+                "$set", new org.bson.Document("data.units.0.startsOn", "2026-11-08")));
     call(
         "manager",
         "POST",
@@ -1022,5 +1029,313 @@ public class AcceptanceSteps {
   @Then("the workflow preserves its financial and access rules")
   public void success() {
     assertThat(verified).isTrue();
+  }
+
+  @When("dues and other charges are classified and cancelled")
+  public void classifyCharges() throws Exception {
+    Map<String, Object> dues =
+        map(
+            "unitId",
+            "a12",
+            "description",
+            "Monthly dues",
+            "category",
+            "DUES",
+            "periodStart",
+            "2026-11-01",
+            "periodEnd",
+            "2026-11-30",
+            "dueOn",
+            "2026-11-15",
+            "amountMinor",
+            10000,
+            "currency",
+            "TRY",
+            "expectedAccountVersion",
+            0);
+    Result batch =
+        call(
+            "manager",
+            "POST",
+            SITE + "/charge-batches",
+            map("items", List.of(dues)),
+            "dues-category",
+            201);
+    assertThat(batch.body().path("charges").get(0).path("category").asText()).isEqualTo("DUES");
+    String id = batch.body().path("charges").get(0).path("id").asText();
+    call(
+        "manager",
+        "POST",
+        SITE + "/charges/" + id + "/cancellations",
+        map("reason", "Wrong period", "expectedVersion", 0),
+        "category-cancel",
+        201);
+    var saved = mongo.getCollection("charges").find(new org.bson.Document("_id", id)).first();
+    assertThat(saved.get("data", org.bson.Document.class).getString("category")).isEqualTo("DUES");
+    var other = new HashMap<String, Object>(dues);
+    other.put("category", "OTHER");
+    other.put("description", "Roof repair");
+    other.put("expectedAccountVersion", 2);
+    Result second =
+        call(
+            "manager",
+            "POST",
+            SITE + "/charge-batches",
+            map("items", List.of(other)),
+            "other-category",
+            201);
+    assertThat(second.body().path("charges").get(0).path("category").asText()).isEqualTo("OTHER");
+    verified = true;
+  }
+
+  @Autowired com.govener.community.application.CommunityPorts.Residences pollResidences;
+  @Autowired com.govener.community.application.CommunityPorts.Relationships pollRelationships;
+  @Autowired com.govener.community.application.CommunityPorts.Units pollUnits;
+
+  private Object pollBody(String audience, String status) {
+    return map(
+        "title",
+        "Garden decision",
+        "description",
+        "Open community poll",
+        "audience",
+        audience,
+        "options",
+        List.of("Yes", "No"),
+        "closesAt",
+        "2026-11-09T09:00:00Z",
+        "status",
+        status);
+  }
+
+  private Result createPoll(String audience, String status) throws Exception {
+    return call("manager", "POST", SITE + "/polls", pollBody(audience, status), null, 201);
+  }
+
+  private Object ballot(String option, List<String> units, long version) {
+    return map("optionId", option, "unitIds", units, "expectedVersion", version);
+  }
+
+  private void sharedResidence() {
+    pollResidences.insert(
+        new com.govener.community.domain.Residence(
+            "neighbor-shared",
+            "olive-gardens",
+            "a12",
+            "neighbor-person",
+            LocalDate.of(2026, 11, 1),
+            null,
+            0));
+  }
+
+  @When("residents cast open unit votes and another resident attempts a duplicate")
+  public void pollResidentVotes() throws Exception {
+    sharedResidence();
+    var created = createPoll("RESIDENTS", "OPEN");
+    String poll = id(created), option = created.body().path("options").get(0).path("id").asText();
+    var before = get("resident", SITE + "/polls/" + poll);
+    assertThat(before.body().path("totalVotes").asLong()).isZero();
+    var voted =
+        call(
+            "resident",
+            "POST",
+            SITE + "/polls/" + poll + "/votes",
+            ballot(option, List.of("a12"), 0),
+            null,
+            200);
+    assertThat(voted.body().path("ballots").get(0).path("voterName").asText())
+        .isEqualTo("Deniz Resident");
+    call(
+        "neighbor",
+        "POST",
+        SITE + "/polls/" + poll + "/votes",
+        ballot(option, List.of("a12", "a03"), 1),
+        null,
+        409);
+    assertThat(get("neighbor", SITE + "/polls/" + poll).body().path("totalVotes").asLong())
+        .isEqualTo(1);
+    call(
+        "neighbor",
+        "POST",
+        SITE + "/polls/" + poll + "/votes",
+        ballot(option, List.of("a03"), 1),
+        null,
+        200);
+    assertThat(get("resident", SITE + "/polls/" + poll).body().path("totalVotes").asLong())
+        .isEqualTo(2);
+    call(
+        "manager",
+        "POST",
+        SITE + "/polls/" + poll + "/votes",
+        ballot(option, List.of("a12"), 2),
+        null,
+        403);
+    call("outsider", "GET", SITE + "/polls/" + poll, null, null, 404);
+    verified = true;
+  }
+
+  @When("an owner votes for three owned units")
+  public void pollOwnerVotes() throws Exception {
+    pollUnits.insert(
+        new com.govener.community.domain.Unit(
+            "a04", "olive-gardens", "A-04", "block-a", "Block A", 1, "APARTMENT", 90, 0));
+    for (String unit : List.of("a12", "a03", "a04"))
+      pollRelationships.insert(
+          new com.govener.community.domain.Relationship(
+              "owner-" + unit,
+              "olive-gardens",
+              unit,
+              "resident-person",
+              "OWNER",
+              LocalDate.of(2026, 11, 1),
+              null,
+              0));
+    var created = createPoll("OWNERS", "OPEN");
+    String poll = id(created), option = created.body().path("options").get(0).path("id").asText();
+    var before = get("resident", SITE + "/polls/" + poll);
+    assertThat(before.body().path("eligibleUnits")).hasSize(3);
+    var result =
+        call(
+            "resident",
+            "POST",
+            SITE + "/polls/" + poll + "/votes",
+            ballot(option, List.of("a12", "a03", "a04"), 0),
+            null,
+            200);
+    assertThat(result.body().path("totalVotes").asLong()).isEqualTo(3);
+    assertThat(result.body().path("results").get(0).path("votes").asLong()).isEqualTo(3);
+    call(
+        "resident",
+        "POST",
+        SITE + "/polls/" + poll + "/votes",
+        ballot(option, List.of("a12"), 1),
+        null,
+        409);
+    call("neighbor", "GET", SITE + "/polls/" + poll, null, null, 404);
+    verified = true;
+  }
+
+  @When("poll publication closure and authorization rules are exercised")
+  public void pollLifecycle() throws Exception {
+    call("resident", "POST", SITE + "/polls", pollBody("RESIDENTS", "OPEN"), null, 403);
+    call("staff", "POST", SITE + "/polls", pollBody("RESIDENTS", "OPEN"), null, 403);
+    var bad =
+        map(
+            "title",
+            "Invalid",
+            "description",
+            "",
+            "audience",
+            "RESIDENTS",
+            "options",
+            List.of("Yes", " yes "),
+            "closesAt",
+            "2026-11-09T09:00:00Z",
+            "status",
+            "OPEN");
+    call("manager", "POST", SITE + "/polls", bad, null, 422);
+    var expired =
+        map(
+            "title",
+            "Expired",
+            "description",
+            "",
+            "audience",
+            "RESIDENTS",
+            "options",
+            List.of("Yes", "No"),
+            "closesAt",
+            "2026-11-08T09:00:00Z",
+            "status",
+            "OPEN");
+    call("manager", "POST", SITE + "/polls", expired, null, 422);
+    var created = createPoll("RESIDENTS", "DRAFT");
+    String poll = id(created), option = created.body().path("options").get(0).path("id").asText();
+    call("resident", "GET", SITE + "/polls/" + poll, null, null, 404);
+    call(
+        "manager",
+        "POST",
+        SITE + "/polls/" + poll + "/publication",
+        map("expectedVersion", 0),
+        null,
+        200);
+    call(
+        "resident",
+        "POST",
+        SITE + "/polls/" + poll + "/votes",
+        ballot("unknown", List.of("a12"), 1),
+        null,
+        422);
+    call(
+        "resident",
+        "POST",
+        SITE + "/polls/" + poll + "/votes",
+        ballot(option, List.of("b06"), 1),
+        null,
+        403);
+    call(
+        "resident",
+        "POST",
+        SITE + "/polls/" + poll + "/votes",
+        ballot(option, List.of("a12"), 1),
+        null,
+        200);
+    call(
+        "manager",
+        "POST",
+        SITE + "/polls/" + poll + "/closure",
+        map("expectedVersion", 1),
+        null,
+        409);
+    call(
+        "manager",
+        "POST",
+        SITE + "/polls/" + poll + "/closure",
+        map("expectedVersion", 2),
+        null,
+        200);
+    call(
+        "resident",
+        "POST",
+        SITE + "/polls/" + poll + "/votes",
+        ballot(option, List.of("a12"), 3),
+        null,
+        409);
+    assertThat(get("resident", SITE + "/polls/" + poll).body().path("status").asText())
+        .isEqualTo("CLOSED");
+    verified = true;
+  }
+
+  @When("two residents concurrently vote for the same unit")
+  public void concurrentPollVotes() throws Exception {
+    sharedResidence();
+    var created = createPoll("RESIDENTS", "OPEN");
+    String path = SITE + "/polls/" + id(created) + "/votes",
+        option = created.body().path("options").get(0).path("id").asText();
+    Client first = client("resident"), second = client("neighbor");
+    var gate = new CountDownLatch(1);
+    var pool = Executors.newFixedThreadPool(2);
+    try {
+      var a =
+          pool.submit(
+              () -> {
+                gate.await();
+                return send(first, "POST", path, ballot(option, List.of("a12"), 0), null, true)
+                    .status();
+              });
+      var b =
+          pool.submit(
+              () -> {
+                gate.await();
+                return send(second, "POST", path, ballot(option, List.of("a12"), 0), null, true)
+                    .status();
+              });
+      gate.countDown();
+      assertThat(List.of(a.get(), b.get())).containsExactlyInAnyOrder(200, 409);
+      assertThat(get("resident", SITE + "/polls/" + id(created)).body().path("ballots")).hasSize(1);
+    } finally {
+      pool.shutdownNow();
+    }
+    verified = true;
   }
 }

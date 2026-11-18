@@ -135,6 +135,8 @@ public final class ViewMapper {
 
   public Map<String, Object> charge(Charge value) {
     return map(
+        "category",
+        value.category(),
         "id",
         value.id(),
         "unitId",
@@ -253,6 +255,10 @@ public final class ViewMapper {
 
   public Map<String, Object> cash(FinancialAccount value) {
     return map(
+        "bankName",
+        value.bankName(),
+        "iban",
+        value.iban(),
         "id",
         value.id(),
         "name",

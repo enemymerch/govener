@@ -36,10 +36,10 @@ add('CommunityContext', { community: ref('Community'), roles: array(enumeration(
 add('DirectoryPerson', { id, name: str() });
 add('DirectoryUnit', { id, label: str(), blockId: id, blockLabel: str(), isMyUnit: bool, residents: array(ref('DirectoryPerson')) });
 add('Relationship', { id, unitId: id, person: ref('DirectoryPerson'), type: enumeration(['OWNER','TENANT']), startsOn: date, endsOn: { ...date, nullable: true } });
-add('FinancialAccount', { id, name: str(), kind: enumeration(['BANK','CASH']), currency: enumeration(['TRY']), openingMinor: integer(), balanceMinor: integer(), version });
+add('FinancialAccount', { bankName:str(), iban:str(), id, name: str(), kind: enumeration(['BANK','CASH']), currency: enumeration(['TRY']), openingMinor: integer(), balanceMinor: integer(), version });
 add('Allocation', { chargeId: id, amountMinor: amount });
-add('Charge', { id, unitId: id, description: str({ minLength:1,maxLength:300 }), periodStart: date, periodEnd: date, issuedOn: date, dueOn: date, amountMinor: amount, currency: enumeration(['TRY']), allocatedMinor: integer({minimum:0}), outstandingMinor: integer({minimum:0}), status: enumeration(['OUTSTANDING','PARTIALLY_PAID','PAID','CANCELLED']), cancelledAt: { ...timestamp, nullable:true }, cancellationReason: str(), version }, ['id','unitId','description','periodStart','periodEnd','issuedOn','dueOn','amountMinor','currency','allocatedMinor','outstandingMinor','status','version']);
-add('ChargeBatchRequest', { items: array(object({ unitId:id, description:str({minLength:1,maxLength:300}), periodStart:date, periodEnd:date, dueOn:date, amountMinor:amount, currency:enumeration(['TRY']), expectedAccountVersion:version })) });
+add('Charge', { category:enumeration(['DUES','OTHER','UNSPECIFIED']), id, unitId: id, description: str({ minLength:1,maxLength:300 }), periodStart: date, periodEnd: date, issuedOn: date, dueOn: date, amountMinor: amount, currency: enumeration(['TRY']), allocatedMinor: integer({minimum:0}), outstandingMinor: integer({minimum:0}), status: enumeration(['OUTSTANDING','PARTIALLY_PAID','PAID','CANCELLED']), cancelledAt: { ...timestamp, nullable:true }, cancellationReason: str(), version }, ['id','unitId','description','periodStart','periodEnd','issuedOn','dueOn','amountMinor','currency','allocatedMinor','outstandingMinor','status','version']);
+add('ChargeBatchRequest', { items: array(object({ unitId:id, description:str({minLength:1,maxLength:300}), periodStart:date, periodEnd:date, dueOn:date, amountMinor:amount, currency:enumeration(['TRY']), expectedAccountVersion:version, category:enumeration(['DUES','OTHER','UNSPECIFIED']) }, ['unitId','description','periodStart','periodEnd','dueOn','amountMinor','currency','expectedAccountVersion'])) });
 add('ChargeBatch', { id, status: enumeration(['COMPLETED']), charges: array(ref('Charge')), createdAt: timestamp });
 add('ReasonCommand', { reason: str({ minLength:1,maxLength:500 }), expectedVersion: version });
 add('PaymentCreate', { unitId:id, accountId:id, amountMinor:amount, currency:enumeration(['TRY']), paidOn:date, reference:str({minLength:1,maxLength:100}), allocations:array(ref('Allocation')), notificationId:id, expectedAccountVersion:version }, ['unitId','accountId','amountMinor','currency','paidOn','reference','allocations','expectedAccountVersion']);
@@ -71,6 +71,14 @@ add('Announcement', { id, title:str(), body:str(), category:enumeration(['MAINTE
 add('Notification', { id, type:enumeration(['ANNOUNCEMENT','CHARGE','PAYMENT','REQUEST','SYSTEM']), title:str(), body:str(), target:object({ kind:enumeration(['OVERVIEW','ANNOUNCEMENT','ACCOUNT','REQUEST','PAYMENT_NOTIFICATION']), id:{...id,nullable:true} }), createdAt:timestamp, readAt:{...timestamp,nullable:true} });
 add('ReadAll', { before:timestamp });
 add('Dashboard', { communityId:id, currency:enumeration(['TRY']), period:date, nextDueOn:{...date,nullable:true}, collectedMinor:integer(), outstandingMinor:integer(), targetMinor:integer(), paidUnitCount:integer(), unitCount:integer(), openRequestCount:integer(), ownAccount:{...ref('UnitAccount'),nullable:true} });
+add('PollOption',{id,label:str({minLength:1,maxLength:200})});
+add('PollBallot',{unitId:id,userId:id,voterName:str(),unitLabel:str(),optionId:id,votedAt:timestamp});
+add('PollEligibleUnit',{id,label:str(),voted:bool});
+add('PollResult',{optionId:id,label:str(),votes:integer({minimum:0})});
+add('Poll',{id,title:str(),description:str(),audience:enumeration(['OWNERS','RESIDENTS']),options:array(ref('PollOption')),closesAt:timestamp,createdAt:timestamp,status:enumeration(['DRAFT','OPEN','CLOSED']),ballots:array(ref('PollBallot')),results:array(ref('PollResult')),eligibleUnits:array(ref('PollEligibleUnit')),totalVotes:integer({minimum:0}),version});
+add('PollCreate',{title:str({minLength:1,maxLength:200}),description:str({maxLength:3000}),audience:enumeration(['OWNERS','RESIDENTS']),options:{...array(str({minLength:1,maxLength:200})),minItems:2,maxItems:10},closesAt:timestamp,status:enumeration(['DRAFT','OPEN'])});
+add('PollVote',{optionId:id,unitIds:{...array(id),uniqueItems:true,minItems:1,maxItems:1000},expectedVersion:version});
+add('PollPage',{items:array(ref('Poll')),nextCursor:{...str(),nullable:true},hasMore:bool});
 for(const name of ['Community','Unit','DirectoryUnit','Relationship','FinancialAccount','Charge','Payment','UnitAccount','AccountEntry','PaymentNotification','Expense','ExpensePayment','Request','Comment','RequestEvent','Announcement','Notification','DirectoryPerson']) add(`${name}Page`, { items:array(ref(name)), nextCursor:{...str(),nullable:true}, hasMore:bool });
 const paths={};
 const common = '/communities/{communityId}';
@@ -110,6 +118,12 @@ operation('get',common+'/announcements','listAnnouncements','AnnouncementPage',n
 operation('get',common+'/notifications','listNotifications','NotificationPage',null,{query:{unread:bool}});operation('put',common+'/notifications/{notificationId}/read','markNotificationRead');operation('post',common+'/notifications/read-all','markAllNotificationsRead',null,'ReadAll');
 operation('post',common+'/attachments','uploadAttachment','Attachment','Upload',{multipart:true,description:'Multipart file upload. Maximum 5 MB. REQUEST_PHOTO permits PNG/JPEG/WebP; receipts/documents permit PNG/JPEG/PDF. Validate content signatures, ownership and purpose server-side. Request creation permits at most 3 photo IDs.'});operation('get',common+'/attachments/{attachmentId}','getAttachment','Attachment');operation('get',common+'/attachments/{attachmentId}/content','downloadAttachment','Attachment',null,{binary:true,description:'Authenticated, authorized binary download. Use safe Content-Disposition filename and nosniff; do not expose public storage keys.'});
 // Explicit access metadata is intended for backend implementation and contract review.
+operation('get',common+'/polls','listPolls','PollPage');
+operation('get',common+'/polls/{pollId}','getPoll','Poll');
+operation('post',common+'/polls','createPoll','Poll','PollCreate');
+operation('post',common+'/polls/{pollId}/votes','votePoll','Poll','PollVote');
+operation('post',common+'/polls/{pollId}/publication','publishPoll','Poll','VersionCommand');
+operation('post',common+'/polls/{pollId}/closure','closePoll','Poll','VersionCommand');
 for (const [url, verbs] of Object.entries(paths)) for (const [method, op] of Object.entries(verbs)) {
   const write = method !== 'get';
   let access = { roles: ['MANAGER', 'RESIDENT'], scope: 'COMMUNITY_MEMBERSHIP', permissions: ['COMMUNITY_READ'] };
@@ -122,6 +136,7 @@ for (const [url, verbs] of Object.entries(paths)) for (const [method, op] of Obj
   else if (/charges|payments|unit-accounts/.test(url)) access = { roles:write?['MANAGER']:['MANAGER','RESIDENT'], scope:write?'COMMUNITY_MEMBERSHIP':'MANAGER_COMMUNITY_OR_RESIDENT_AUTHORIZED_ACCOUNT_PROJECTION', permissions:write?[/charges/.test(url)?'CHARGE_CREATE':'PAYMENT_RECORD']:['FINANCE_READ'] };
   else if (/requests/.test(url)) access = { roles:/assignments|status-changes|events/.test(url)&&write?['MANAGER']:['MANAGER','RESIDENT'],scope:'MANAGER_COMMUNITY_OR_RESIDENT_CREATED_REQUEST',permissions: /assignments|status-changes/.test(url)?['REQUEST_MANAGE']:[] };
   else if (/announcements/.test(url)) access = {roles:write?['MANAGER']:['MANAGER','RESIDENT'],scope:write?'COMMUNITY_MEMBERSHIP':'MANAGER_COMMUNITY_OR_PUBLISHED_MATCHING_AUDIENCE',permissions:write?['ANNOUNCEMENT_WRITE']:[]};
+  else if (/polls/.test(url)) access = {roles:write && !/votes/.test(url)?['MANAGER']:['MANAGER','RESIDENT'],scope:'COMMUNITY_MEMBERSHIP_AND_CURRENT_POLL_AUDIENCE',permissions:write && !/votes/.test(url)?['POLL_MANAGE']:['COMMUNITY_READ']};
   else if (/directory/.test(url)) access = {roles:['MANAGER','RESIDENT'],scope:'CURRENT_RESIDENTS_IN_OWN_COMMUNITY_ONLY',permissions:['DIRECTORY_READ']};
   else if (/notifications/.test(url)) access = {roles:['MANAGER','RESIDENT'],scope:'CURRENT_USER_IN_COMMUNITY',permissions:[]};
   else if (/attachments/.test(url)) access = {roles:['MANAGER','RESIDENT'],scope:'OWNER_OR_AUTHORIZED_PARENT_RESOURCE_AND_PURPOSE',permissions:[]};
@@ -132,6 +147,7 @@ for (const [url, verbs] of Object.entries(paths)) for (const [method, op] of Obj
 for (const schema of Object.values(schemas)) for (const [key, value] of Object.entries(schema.properties ?? {})) {
   if (value.$ref && value.nullable) { schema.properties[key] = { $ref: value.$ref }; schema.required = schema.required.filter(field => field !== key); }
 }
+for(const url of Object.keys(paths))if(/polls\/\{pollId\}\//.test(url)&&paths[url].post){paths[url].post.responses['200']=paths[url].post.responses['201'];delete paths[url].post.responses['201'];}
 const doc={openapi:'3.0.3',info:{title:'Govener Resident and Manager API',version:'0.1.0',description:'Frontend-driven contract implemented by the Spring Boot backend in backend/. See BACKEND-HANDOFF.md for open product decisions and exact integration boundaries. Amounts are integer TRY minor units (kuruş); dates are ISO calendar dates, timestamps UTC instants, and community time zone is Europe/Istanbul. Localized UI labels never act as IDs or enum values.'},servers:[{url:'/api/v1'}],security:[{SessionCookie:[]}],paths,components:{securitySchemes:{SessionCookie:{type:'apiKey',in:'cookie',name:'govener_session',description:'HttpOnly Secure SameSite cookie; never persist session secrets in web storage.'}},schemas}};
 writeGenerated(path.join(__dirname,'../../docs/openapi.json'),JSON.stringify(doc,null,2)+'\n');
 console.log(`Generated ${Object.values(paths).reduce((sum,item)=>sum+Object.keys(item).length,0)} operations and ${Object.keys(schemas).length} schemas.`);

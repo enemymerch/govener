@@ -83,9 +83,7 @@ test("charge creation posts versions and idempotency and survives reload", async
     .getByRole("link", { name: "Financial management", exact: true })
     .click();
   const description = "UI charge " + Date.now();
-  await page
-    .getByRole("button", { name: "Create charges", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Create dues", exact: true }).click();
   await page.getByLabel("DESCRIPTION", { exact: true }).fill(description);
   await page.getByLabel("Amount (TRY)", { exact: true }).fill("100");
   await page.getByRole("checkbox", { name: "A-12", exact: true }).check();
@@ -401,9 +399,7 @@ test("unknown financial outcome retains the same idempotency key on explicit ret
   await page
     .getByRole("link", { name: "Financial management", exact: true })
     .click();
-  await page
-    .getByRole("button", { name: "Create charges", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Create dues", exact: true }).click();
   await page
     .getByLabel("DESCRIPTION", { exact: true })
     .fill("Uncertain " + Date.now());

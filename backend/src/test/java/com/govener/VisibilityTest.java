@@ -67,11 +67,55 @@ class VisibilityTest {
   }
 
   @Test
-  void doesNotAutomaticallyProratePartialPeriods() {
+  void includesFullJoiningMonthWithoutProratingDebt() {
     assertThat(
             FinancialVisibility.relationshipPeriod()
                 .chargeVisible(
                     resident(today, null),
+                    charge(today.withDayOfMonth(1), today.withDayOfMonth(30)),
+                    today))
+        .isTrue();
+  }
+
+  @Test
+  void joiningMidMonthStillHidesPreviousMonth() {
+    assertThat(
+            FinancialVisibility.relationshipPeriod()
+                .chargeVisible(
+                    resident(today, null),
+                    charge(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31)),
+                    today))
+        .isFalse();
+  }
+
+  @Test
+  void joiningMonthDoesNotExposePeriodsSpanningEarlierMonths() {
+    assertThat(
+            FinancialVisibility.relationshipPeriod()
+                .chargeVisible(
+                    resident(today, null),
+                    charge(LocalDate.of(2026, 10, 31), LocalDate.of(2026, 11, 30)),
+                    today))
+        .isFalse();
+  }
+
+  @Test
+  void futureRelationshipDoesNotGrantAccess() {
+    assertThat(
+            FinancialVisibility.relationshipPeriod()
+                .chargeVisible(
+                    resident(today.plusDays(1), null),
+                    charge(today.withDayOfMonth(1), today.withDayOfMonth(30)),
+                    today))
+        .isFalse();
+  }
+
+  @Test
+  void joiningMonthDoesNotExtendRelationshipEnd() {
+    assertThat(
+            FinancialVisibility.relationshipPeriod()
+                .chargeVisible(
+                    resident(today, today.plusDays(1)),
                     charge(today.withDayOfMonth(1), today.withDayOfMonth(30)),
                     today))
         .isFalse();

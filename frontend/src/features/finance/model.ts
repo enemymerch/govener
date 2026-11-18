@@ -1,5 +1,6 @@
 import type { AttachmentSource } from "../../shared/useAttachment";
 export type Charge = {
+  category?: "DUES" | "OTHER" | "UNSPECIFIED";
   version?: number;
   allocatedMinor?: number;
   outstandingMinor?: number;
@@ -28,6 +29,8 @@ export type RecordedPayment = {
   reason?: string;
 };
 export type FinancialAccount = {
+  bankName?: string;
+  iban?: string;
   version?: number;
   balanceMinor?: number;
   id: string;

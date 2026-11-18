@@ -65,3 +65,9 @@ Base URL: `/api/v1`. Access is enforced server-side. See [Backend Handoff](BACKE
 | `uploadAttachment` | `POST /communities/{communityId}/attachments` | Upload | 201 Attachment | MANAGER, RESIDENT · OWNER_OR_AUTHORIZED_PARENT_RESOURCE_AND_PURPOSE | — |
 | `getAttachment` | `GET /communities/{communityId}/attachments/{attachmentId}` | — | 200 Attachment | MANAGER, RESIDENT · OWNER_OR_AUTHORIZED_PARENT_RESOURCE_AND_PURPOSE | — |
 | `downloadAttachment` | `GET /communities/{communityId}/attachments/{attachmentId}/content` | — | 200 binary | MANAGER, RESIDENT · OWNER_OR_AUTHORIZED_PARENT_RESOURCE_AND_PURPOSE | — |
+| `listPolls` | `GET /communities/{communityId}/polls` | — | 200 PollPage | MANAGER, RESIDENT · COMMUNITY_MEMBERSHIP_AND_CURRENT_POLL_AUDIENCE | COMMUNITY_READ |
+| `createPoll` | `POST /communities/{communityId}/polls` | PollCreate | 201 Poll | MANAGER · COMMUNITY_MEMBERSHIP_AND_CURRENT_POLL_AUDIENCE | POLL_MANAGE |
+| `getPoll` | `GET /communities/{communityId}/polls/{pollId}` | — | 200 Poll | MANAGER, RESIDENT · COMMUNITY_MEMBERSHIP_AND_CURRENT_POLL_AUDIENCE | COMMUNITY_READ |
+| `votePoll` | `POST /communities/{communityId}/polls/{pollId}/votes` | PollVote | 200 Poll | MANAGER, RESIDENT · COMMUNITY_MEMBERSHIP_AND_CURRENT_POLL_AUDIENCE | COMMUNITY_READ |
+| `publishPoll` | `POST /communities/{communityId}/polls/{pollId}/publication` | VersionCommand | 200 Poll | MANAGER · COMMUNITY_MEMBERSHIP_AND_CURRENT_POLL_AUDIENCE | POLL_MANAGE |
+| `closePoll` | `POST /communities/{communityId}/polls/{pollId}/closure` | VersionCommand | 200 Poll | MANAGER · COMMUNITY_MEMBERSHIP_AND_CURRENT_POLL_AUDIENCE | POLL_MANAGE |

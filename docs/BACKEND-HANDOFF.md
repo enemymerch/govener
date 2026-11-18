@@ -156,7 +156,7 @@ The workspace currently collects complete authorized collections before local fi
 
 ## Product decisions still open
 
-- Confirmed: resident financial visibility is limited to periods covered by their dated owner/tenant relationship. Retrospective charges use their billing period. Continued access after a relationship ends and treatment of partially overlapping billing periods remain separate decisions.
+- Confirmed: resident charge visibility includes the entire joining month of an active owner/tenant access interval, without prorating amounts. Earlier billing periods remain hidden; billing periods spanning the joining-month boundary are also hidden. Retrospective charges use their billing period. Relationship end dates are not extended, payment-date filtering remains exact, and ended relationships do not grant ongoing access.
 - Legal payment responsibility and any proration, area/share distribution, late charges, or interest policy.
 - Final correction/refund rules beyond the conservative mock behavior.
 - Full request lifecycle, reopening/closure policy, detailed staff permissions, and announcement version/audit history.

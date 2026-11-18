@@ -15,10 +15,10 @@ export type CommunityContext = { "community": Community; "roles": Array<"MANAGER
 export type DirectoryPerson = { "id": string; "name": string };
 export type DirectoryUnit = { "id": string; "label": string; "blockId": string; "blockLabel": string; "isMyUnit": boolean; "residents": Array<DirectoryPerson> };
 export type Relationship = { "id": string; "unitId": string; "person": DirectoryPerson; "type": "OWNER" | "TENANT"; "startsOn": string; "endsOn": string | null };
-export type FinancialAccount = { "id": string; "name": string; "kind": "BANK" | "CASH"; "currency": "TRY"; "openingMinor": number; "balanceMinor": number; "version": number };
+export type FinancialAccount = { "bankName": string; "iban": string; "id": string; "name": string; "kind": "BANK" | "CASH"; "currency": "TRY"; "openingMinor": number; "balanceMinor": number; "version": number };
 export type Allocation = { "chargeId": string; "amountMinor": number };
-export type Charge = { "id": string; "unitId": string; "description": string; "periodStart": string; "periodEnd": string; "issuedOn": string; "dueOn": string; "amountMinor": number; "currency": "TRY"; "allocatedMinor": number; "outstandingMinor": number; "status": "OUTSTANDING" | "PARTIALLY_PAID" | "PAID" | "CANCELLED"; "cancelledAt"?: string | null; "cancellationReason"?: string; "version": number };
-export type ChargeBatchRequest = { "items": Array<{ "unitId": string; "description": string; "periodStart": string; "periodEnd": string; "dueOn": string; "amountMinor": number; "currency": "TRY"; "expectedAccountVersion": number }> };
+export type Charge = { "category"?: "DUES" | "OTHER" | "UNSPECIFIED"; "id": string; "unitId": string; "description": string; "periodStart": string; "periodEnd": string; "issuedOn": string; "dueOn": string; "amountMinor": number; "currency": "TRY"; "allocatedMinor": number; "outstandingMinor": number; "status": "OUTSTANDING" | "PARTIALLY_PAID" | "PAID" | "CANCELLED"; "cancelledAt"?: string | null; "cancellationReason"?: string; "version": number };
+export type ChargeBatchRequest = { "items": Array<{ "unitId": string; "description": string; "periodStart": string; "periodEnd": string; "dueOn": string; "amountMinor": number; "currency": "TRY"; "expectedAccountVersion": number; "category"?: "DUES" | "OTHER" | "UNSPECIFIED" }> };
 export type ChargeBatch = { "id": string; "status": "COMPLETED"; "charges": Array<Charge>; "createdAt": string };
 export type ReasonCommand = { "reason": string; "expectedVersion": number };
 export type PaymentCreate = { "unitId": string; "accountId": string; "amountMinor": number; "currency": "TRY"; "paidOn": string; "reference": string; "allocations": Array<Allocation>; "notificationId"?: string; "expectedAccountVersion": number };
@@ -50,6 +50,14 @@ export type Announcement = { "id": string; "title": string; "body": string; "cat
 export type Notification = { "id": string; "type": "ANNOUNCEMENT" | "CHARGE" | "PAYMENT" | "REQUEST" | "SYSTEM"; "title": string; "body": string; "target": { "kind": "OVERVIEW" | "ANNOUNCEMENT" | "ACCOUNT" | "REQUEST" | "PAYMENT_NOTIFICATION"; "id": string | null }; "createdAt": string; "readAt": string | null };
 export type ReadAll = { "before": string };
 export type Dashboard = { "communityId": string; "currency": "TRY"; "period": string; "nextDueOn": string | null; "collectedMinor": number; "outstandingMinor": number; "targetMinor": number; "paidUnitCount": number; "unitCount": number; "openRequestCount": number; "ownAccount"?: UnitAccount };
+export type PollOption = { "id": string; "label": string };
+export type PollBallot = { "unitId": string; "userId": string; "voterName": string; "unitLabel": string; "optionId": string; "votedAt": string };
+export type PollEligibleUnit = { "id": string; "label": string; "voted": boolean };
+export type PollResult = { "optionId": string; "label": string; "votes": number };
+export type Poll = { "id": string; "title": string; "description": string; "audience": "OWNERS" | "RESIDENTS"; "options": Array<PollOption>; "closesAt": string; "createdAt": string; "status": "DRAFT" | "OPEN" | "CLOSED"; "ballots": Array<PollBallot>; "results": Array<PollResult>; "eligibleUnits": Array<PollEligibleUnit>; "totalVotes": number; "version": number };
+export type PollCreate = { "title": string; "description": string; "audience": "OWNERS" | "RESIDENTS"; "options": Array<string>; "closesAt": string; "status": "DRAFT" | "OPEN" };
+export type PollVote = { "optionId": string; "unitIds": Array<string>; "expectedVersion": number };
+export type PollPage = { "items": Array<Poll>; "nextCursor": string | null; "hasMore": boolean };
 export type CommunityPage = { "items": Array<Community>; "nextCursor": string | null; "hasMore": boolean };
 export type UnitPage = { "items": Array<Unit>; "nextCursor": string | null; "hasMore": boolean };
 export type DirectoryUnitPage = { "items": Array<DirectoryUnit>; "nextCursor": string | null; "hasMore": boolean };
@@ -129,6 +137,12 @@ export interface Operations {
   uploadAttachment: { params: { communityId: string }; body: FormData; response: Attachment }
   getAttachment: { params: { communityId: string; attachmentId: string }; response: Attachment }
   downloadAttachment: { params: { communityId: string; attachmentId: string }; response: Blob }
+  listPolls: { params: { communityId: string }; query?: { cursor?: string; limit?: number }; response: PollPage }
+  createPoll: { params: { communityId: string }; body: PollCreate; response: Poll }
+  getPoll: { params: { communityId: string; pollId: string }; response: Poll }
+  votePoll: { params: { communityId: string; pollId: string }; body: PollVote; response: Poll }
+  publishPoll: { params: { communityId: string; pollId: string }; body: VersionCommand; response: Poll }
+  closePoll: { params: { communityId: string; pollId: string }; body: VersionCommand; response: Poll }
 }
 export const operationMetadata = {
   "getCsrf": {
@@ -602,5 +616,53 @@ export const operationMetadata = {
     "binary": true,
     "financial": false,
     "csrf": false
+  },
+  "listPolls": {
+    "method": "GET",
+    "path": "/communities/{communityId}/polls",
+    "multipart": false,
+    "binary": false,
+    "financial": false,
+    "csrf": false
+  },
+  "createPoll": {
+    "method": "POST",
+    "path": "/communities/{communityId}/polls",
+    "multipart": false,
+    "binary": false,
+    "financial": false,
+    "csrf": true
+  },
+  "getPoll": {
+    "method": "GET",
+    "path": "/communities/{communityId}/polls/{pollId}",
+    "multipart": false,
+    "binary": false,
+    "financial": false,
+    "csrf": false
+  },
+  "votePoll": {
+    "method": "POST",
+    "path": "/communities/{communityId}/polls/{pollId}/votes",
+    "multipart": false,
+    "binary": false,
+    "financial": false,
+    "csrf": true
+  },
+  "publishPoll": {
+    "method": "POST",
+    "path": "/communities/{communityId}/polls/{pollId}/publication",
+    "multipart": false,
+    "binary": false,
+    "financial": false,
+    "csrf": true
+  },
+  "closePoll": {
+    "method": "POST",
+    "path": "/communities/{communityId}/polls/{pollId}/closure",
+    "multipart": false,
+    "binary": false,
+    "financial": false,
+    "csrf": true
   }
 } as const;

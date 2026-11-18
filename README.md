@@ -45,3 +45,7 @@ npm test
 The web application uses the API by default. Start both the backend and Vite as described in the [frontend guide](frontend/README.md). See the handoff for server authority and remaining product boundaries.
 
 Documentation, code, comments and commit messages are English. The UI supports Turkish and English. Product discussions may be Turkish. Admin, online payments, company accounting and native Android delivery are deferred.
+
+## Community polls
+
+Managers can create and publish polls for current owners or current residents. Each unit has one immutable vote, and results are visible while voting is open. See [polls](docs/POLLS.md) for eligibility, permissions and HTTP operations.

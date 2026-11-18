@@ -29,6 +29,7 @@ public class DemoData implements ApplicationRunner {
   private final IdentityPorts.Users users;
   private final IdentityPorts.Passwords passwords;
   private final FinancePorts.Accounts accounts;
+  private final com.govener.administration.application.AdministrationService administration;
 
   public DemoData(
       CommunityPorts.Communities communities,
@@ -39,7 +40,9 @@ public class DemoData implements ApplicationRunner {
       CommunityPorts.Residences residences,
       IdentityPorts.Users users,
       IdentityPorts.Passwords passwords,
-      FinancePorts.Accounts accounts) {
+      FinancePorts.Accounts accounts,
+      com.govener.administration.application.AdministrationService administration) {
+    this.administration = administration;
     this.communities = communities;
     this.units = units;
     this.people = people;
@@ -57,7 +60,10 @@ public class DemoData implements ApplicationRunner {
   }
 
   public void seed() {
-    if (communities.find("olive-gardens").isPresent()) return;
+    if (communities.find("olive-gardens").isPresent()) {
+      seedAdministrators();
+      return;
+    }
     communities.insert(new Community("olive-gardens", "Olive Gardens", "Istanbul", 0));
     communities.insert(new Community("bosphorus-homes", "Bosphorus Homes", "Istanbul", 0));
     units.insert(
@@ -135,6 +141,35 @@ public class DemoData implements ApplicationRunner {
     accounts.insert(
         new FinancialAccount(
             "bosphorus-bank", "bosphorus-homes", "Community Bank", "BANK", 0, 0, 0));
+    seedAdministrators();
+  }
+
+  private void seedAdministrators() {
+    memberships
+        .find("manager-membership")
+        .filter(member -> !member.permissions().contains(Permission.POLL_MANAGE))
+        .ifPresent(
+            member -> {
+              var grants = new HashSet<>(member.permissions());
+              grants.add(Permission.POLL_MANAGE);
+              memberships.save(
+                  new Membership(
+                      member.id(),
+                      member.communityId(),
+                      member.userId(),
+                      member.personId(),
+                      member.roles(),
+                      grants,
+                      member.units(),
+                      member.version() + 1),
+                  member.version());
+            });
+    administration.bootstrapRoot("System Root", "root@govener.test", PASSWORD);
+    if (users.byLoginEmail("admin@govener.test").isEmpty())
+      administration.createAdministrator(
+          new com.govener.shared.domain.Actor("root", "System Root"),
+          new com.govener.administration.application.AdminCommands.AdministratorCreate(
+              "Site Administrator", "admin@govener.test", "", PASSWORD, Set.of("olive-gardens")));
   }
 
   private void user(String id, String name, String hash) {

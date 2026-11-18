@@ -3,25 +3,12 @@ import ResidentDirectory from "./ResidentDirectory";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "wouter";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Building2,
-  RefreshCw,
-  Search,
-  Users,
-  Wallet,
-} from "lucide-react";
+import { ArrowLeft, Building2, RefreshCw, Users } from "lucide-react";
 import { all } from "../../api/server";
 import type { Relationship } from "../../api/generated";
 import { calendarDateInIstanbul } from "../../shared/calendar";
 import { useFormat } from "../../shared/useFormat";
-import {
-  isCurrent,
-  unitSummary,
-  type CommunitySnapshot,
-  type Unit,
-} from "./model";
+import { isCurrent, type CommunitySnapshot, type Unit } from "./model";
 
 type LoadState =
   | { status: "loading" }
@@ -153,212 +140,120 @@ function ManagerUnits({ unitId }: { unitId?: string }) {
 
 function UnitDirectory({ snapshot }: { snapshot: CommunitySnapshot }) {
   const { t } = useTranslation();
-  const { locale, moneyMinor, date } = useFormat();
+  const { locale } = useFormat();
   const [params, setParams] = useSearchParams();
   const query = params.get("q") ?? "";
-  const block = params.get("block") ?? "ALL";
-  const relationship = params.get("relationship") ?? "ALL";
-  const current = snapshot.relationships.filter((item) =>
-    isCurrent(item, snapshot.asOf),
-  );
-  const peopleFor = (unitId: string, type: "OWNER" | "TENANT") =>
-    current
-      .filter((item) => item.unitId === unitId && item.type === type)
+  const block = params.get("block") ?? "";
+  const names = (id: string, type: "OWNER" | "TENANT") =>
+    snapshot.relationships
+      .filter(
+        (item) =>
+          item.unitId === id &&
+          item.type === type &&
+          isCurrent(item, snapshot.asOf),
+      )
       .map(
         (item) =>
           snapshot.people.find((person) => person.id === item.personId)?.name ??
           t("units.unknownPerson"),
-      );
-  const blocks = [...new Set(snapshot.units.map((unit) => unit.block))].sort();
-  function update(key: string, value: string) {
+      )
+      .join(", ") || t("units.notRecorded");
+  const visible = snapshot.units.filter(
+    (unit) =>
+      (!block || unit.block === block) &&
+      `${unit.label} ${unit.blockLabel} ${names(unit.id, "OWNER")} ${names(unit.id, "TENANT")}`
+        .toLocaleLowerCase(locale)
+        .includes(query.trim().toLocaleLowerCase(locale)),
+  );
+  const update = (key: string, value: string) => {
     const next = new URLSearchParams(params);
-    if (value && value !== "ALL") next.set(key, value);
+    if (value) next.set(key, value);
     else next.delete(key);
     setParams(next, { replace: true });
-  }
-  const visible = snapshot.units.filter((unit) => {
-    const owners = peopleFor(unit.id, "OWNER");
-    const tenants = peopleFor(unit.id, "TENANT");
-    const hasRelation = owners.length + tenants.length > 0;
-    const relationshipMatch =
-      relationship === "ALL" ||
-      (relationship === "TENANT"
-        ? tenants.length > 0
-        : relationship === "OWNER_ONLY"
-          ? owners.length > 0 && tenants.length === 0
-          : relationship === "NONE"
-            ? !hasRelation
-            : false);
-    const haystack =
-      `${unit.label} ${unit.block} ${owners.join(" ")} ${tenants.join(" ")}`.toLocaleLowerCase(
-        locale,
-      );
-    return (
-      (block === "ALL" || unit.block === block) &&
-      relationshipMatch &&
-      haystack.includes(query.trim().toLocaleLowerCase(locale))
-    );
-  });
-  const totalOutstanding = snapshot.units.reduce(
-    (total, unit) => total + unitSummary(snapshot, unit.id).outstandingMinor,
-    0,
-  );
-  const listHref = `/units${params.size ? `?${params.toString()}` : ""}`;
+  };
   return (
-    <>
-      <div className="unit-context">
-        <span className="tag">{t("units.readOnly")}</span>
-        <p>{t("units.snapshot", { date: date(snapshot.asOf) })}</p>
+    <section className="panel unit-directory">
+      <div className="section-heading">
+        <div>
+          <h2>{t("manager.directory")}</h2>
+          <p>{t("manager.directoryHelp")}</p>
+        </div>
       </div>
-      <section className="unit-summary-grid">
-        <div>
-          <Building2 size={20} />
-          <span>{t("units.sampleUnits")}</span>
-          <strong>{snapshot.units.length}</strong>
-        </div>
-        <div>
-          <Users size={20} />
-          <span>{t("units.currentRelationships")}</span>
-          <strong>{current.length}</strong>
-        </div>
-        <div>
-          <Wallet size={20} />
-          <span>{t("units.sampleOutstanding")}</span>
-          <strong>{moneyMinor(totalOutstanding)}</strong>
-        </div>
-      </section>
-      <section className="panel unit-directory">
-        <div className="section-heading">
-          <div>
-            <h2>{t("Units")}</h2>
-            <p role="status">
-              {t("units.resultCount", {
-                count: visible.length,
-                total: snapshot.units.length,
-              })}
-            </p>
-          </div>
-        </div>
-        <div className="unit-filters">
-          <label className="search">
-            <Search size={17} />
-            <input
-              aria-label={t("units.search")}
-              placeholder={t("units.search")}
-              value={query}
-              onChange={(event) => update("q", event.target.value)}
-            />
-          </label>
-          <label>
-            {t("units.block")}
-            <select
-              value={block}
-              onChange={(event) => update("block", event.target.value)}
-            >
-              <option value="ALL">{t("units.allBlocks")}</option>
-              {blocks.map((value) => (
-                <option key={value} value={value}>
-                  {snapshot.units.find((unit) => unit.block === value)
-                    ?.blockLabel ?? t("units.blockName", { block: value })}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {t("units.relationshipFilter")}
-            <select
-              value={relationship}
-              onChange={(event) => update("relationship", event.target.value)}
-            >
-              <option value="ALL">{t("units.allRelationships")}</option>
-              <option value="TENANT">{t("units.withTenant")}</option>
-              <option value="OWNER_ONLY">{t("units.ownerOnly")}</option>
-              <option value="NONE">{t("units.noRelationship")}</option>
-            </select>
-          </label>
-          {(query || block !== "ALL" || relationship !== "ALL") && (
-            <button
-              className="text-button"
-              onClick={() =>
-                setParams(new URLSearchParams(), { replace: true })
-              }
-            >
-              {t("units.clearFilters")}
-            </button>
-          )}
-        </div>
-        {visible.length === 0 ? (
-          <div className="route-state">
-            <Search size={26} />
-            <h2>{t("units.empty")}</h2>
-            <p>{t("units.emptyHelp")}</p>
-            <button
-              className="secondary"
-              onClick={() =>
-                setParams(new URLSearchParams(), { replace: true })
-              }
-            >
-              {t("units.clearFilters")}
-            </button>
-          </div>
-        ) : (
-          <div className="table-scroll">
-            <table className="unit-table">
-              <thead>
-                <tr>
-                  <th>{t("UNIT")}</th>
-                  <th>{t("units.owner")}</th>
-                  <th>{t("units.tenant")}</th>
-                  <th>{t("units.outstanding")}</th>
-                  <th>{t("ACTION")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((unit) => (
-                  <tr key={unit.id}>
-                    <td>
-                      <strong>{unit.label}</strong>
-                      <small>
-                        {t(`units.kind.${unit.kind}`)} ·{" "}
-                        {t("units.floorValue", { floor: unit.floor })}
-                      </small>
-                    </td>
-                    <td>
-                      {peopleFor(unit.id, "OWNER").join(", ") ||
-                        t("units.notRecorded")}
-                    </td>
-                    <td>
-                      {peopleFor(unit.id, "TENANT").join(", ") ||
-                        t("units.notRecorded")}
-                    </td>
-                    <td>
-                      <strong>
-                        {moneyMinor(
-                          unitSummary(snapshot, unit.id).outstandingMinor,
-                        )}
-                      </strong>
-                    </td>
-                    <td>
-                      <Link
-                        className="text-button"
-                        href={`/units/${encodeURIComponent(unit.id)}${params.size ? `?${params.toString()}` : ""}`}
-                        state={{ listHref }}
-                      >
-                        {t("units.viewDetail", { unit: unit.label })}
-                        <ArrowRight size={15} />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-    </>
+      <div className="tracking-filters">
+        <label>
+          {t("units.search")}
+          <input
+            value={query}
+            onChange={(event) => update("q", event.target.value)}
+          />
+        </label>
+        <label>
+          {t("units.block")}
+          <select
+            value={block}
+            onChange={(event) => update("block", event.target.value)}
+          >
+            <option value="">{t("units.allBlocks")}</option>
+            {[
+              ...new Map(
+                snapshot.units.map((unit) => [
+                  unit.block,
+                  unit.blockLabel ?? unit.block,
+                ]),
+              ).entries(),
+            ].map(([id, name]) => (
+              <option key={id} value={id}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          className="text-button"
+          onClick={() => setParams(new URLSearchParams(), { replace: true })}
+        >
+          {t("units.clearFilters")}
+        </button>
+      </div>
+      <div className="table-scroll">
+        <table className="unit-table">
+          <thead>
+            <tr>
+              <th>{t("UNIT")}</th>
+              <th>{t("units.block")}</th>
+              <th>{t("units.owner")}</th>
+              <th>{t("units.tenant")}</th>
+              <th>{t("ACTION")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((unit) => (
+              <tr key={unit.id}>
+                <td>
+                  <Link href={"/units/" + encodeURIComponent(unit.id)}>
+                    {unit.label}
+                  </Link>
+                </td>
+                <td>{unit.blockLabel ?? unit.block}</td>
+                <td>{names(unit.id, "OWNER")}</td>
+                <td>{names(unit.id, "TENANT")}</td>
+                <td>
+                  <Link
+                    href={"/units/" + encodeURIComponent(unit.id)}
+                    className="text-button"
+                  >
+                    {t("units.viewDetail", { unit: unit.label })}
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {!visible.length && <p className="empty-state">{t("units.empty")}</p>}
+    </section>
   );
 }
-
 function UnitDetail({
   snapshot,
   unit,
@@ -367,201 +262,66 @@ function UnitDetail({
   unit: Unit;
 }) {
   const { t } = useTranslation();
-  const { moneyMinor, date, period } = useFormat();
-  const [params] = useSearchParams();
-  const [tab, setTab] = useState<"relationships" | "account">("relationships");
-  useEffect(() => {
-    setTab("relationships");
-  }, [unit.id]);
-  const summary = unitSummary(snapshot, unit.id);
+  const { date } = useFormat();
   const relationships = snapshot.relationships
     .filter((item) => item.unitId === unit.id)
     .sort((a, b) => b.startsOn.localeCompare(a.startsOn));
-  const backHref = `/units${params.size ? `?${params.toString()}` : ""}`;
+  const current = relationships.filter((item) =>
+    isCurrent(item, snapshot.asOf),
+  );
+  const past = relationships.filter((item) => !isCurrent(item, snapshot.asOf));
+  function people(items: typeof relationships) {
+    return items.map((item) => (
+      <article className="relationship-card" key={item.id}>
+        <Users size={22} />
+        <div>
+          <h3>
+            {snapshot.people.find((person) => person.id === item.personId)
+              ?.name ?? t("units.unknownPerson")}
+          </h3>
+          <strong>{t("units.relation." + item.type)}</strong>
+          <p>
+            {date(item.startsOn)} -{" "}
+            {item.endsOn ? date(item.endsOn) : t("units.ongoing")}
+          </p>
+        </div>
+      </article>
+    ));
+  }
   return (
     <div className="unit-detail">
-      <Link href={backHref} className="text-button unit-back">
+      <Link href="/units" className="text-button unit-back">
         <ArrowLeft size={16} />
-        {t("units.back")}
+        {t("manager.directory")}
       </Link>
       <section className="panel unit-identity">
-        <span className="unit-building-icon">
-          <Building2 size={32} />
-        </span>
+        <Building2 size={30} />
         <div>
-          <span className="eyebrow">{snapshot.communityName ?? ""}</span>
           <h2>{t("units.unitTitle", { unit: unit.label })}</h2>
           <p>
-            {t(`units.kind.${unit.kind}`)} ·{" "}
-            {unit.blockLabel ?? t("units.blockName", { block: unit.block })} ·{" "}
-            {t("units.floorValue", { floor: unit.floor })} ·{" "}
+            {unit.blockLabel ?? unit.block} ?{" "}
+            {t("units.floorValue", { floor: unit.floor })} ?{" "}
             {t("units.area", { area: unit.areaSqm })}
           </p>
         </div>
-        <span className="tag">{t("units.readOnly")}</span>
       </section>
-      <section className="unit-summary-grid">
-        <div>
-          <span>{t("units.totalCharged")}</span>
-          <strong>{moneyMinor(summary.chargedMinor)}</strong>
+      <section className="panel">
+        <div className="section-heading">
+          <h2>{t("manager.currentPeople")}</h2>
         </div>
-        <div>
-          <span>{t("units.recordedPayments")}</span>
-          <strong>{moneyMinor(summary.paidMinor)}</strong>
-        </div>
-        <div>
-          <span>{t("units.outstanding")}</span>
-          <strong>{moneyMinor(summary.outstandingMinor)}</strong>
+        <div className="relationship-list">
+          {current.length ? (
+            people(current)
+          ) : (
+            <p className="empty-state">{t("units.notRecorded")}</p>
+          )}
         </div>
       </section>
-      <div className="unit-tabs" aria-label={t("units.detailSections")}>
-        <button
-          className={tab === "relationships" ? "active" : ""}
-          aria-pressed={tab === "relationships"}
-          onClick={() => setTab("relationships")}
-        >
-          <Users size={17} />
-          {t("units.relationshipHistory")}
-        </button>
-        <button
-          className={tab === "account" ? "active" : ""}
-          aria-pressed={tab === "account"}
-          onClick={() => setTab("account")}
-        >
-          <Wallet size={17} />
-          {t("units.accountSummary")}
-        </button>
-      </div>
-      {tab === "relationships" ? (
-        <section className="panel">
-          <div className="section-heading">
-            <div>
-              <h2>{t("units.relationshipHistory")}</h2>
-              <p>{t("units.historyHelp", { date: date(snapshot.asOf) })}</p>
-            </div>
-          </div>
-          <div className="relationship-list">
-            {relationships.length === 0 ? (
-              <p className="empty-state">{t("units.noHistory")}</p>
-            ) : (
-              relationships.map((item) => (
-                <article className="relationship-card" key={item.id}>
-                  <span className="avatar">
-                    {snapshot.people
-                      .find((person) => person.id === item.personId)
-                      ?.name.split(" ")
-                      .map((part) => part[0])
-                      .slice(0, 2)
-                      .join("") ?? "—"}
-                  </span>
-                  <div>
-                    <h3>
-                      {snapshot.people.find(
-                        (person) => person.id === item.personId,
-                      )?.name ?? t("units.unknownPerson")}
-                    </h3>
-                    <span>{t(`units.relation.${item.type}`)}</span>
-                    <p>
-                      {date(item.startsOn)} —{" "}
-                      {item.endsOn ? date(item.endsOn) : t("units.ongoing")}
-                    </p>
-                  </div>
-                  <span
-                    className={`status ${isCurrent(item, snapshot.asOf) ? "resolved" : "payment-status-withdrawn"}`}
-                  >
-                    {t(
-                      isCurrent(item, snapshot.asOf)
-                        ? "units.current"
-                        : "units.past",
-                    )}
-                  </span>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
-      ) : (
-        <section className="panel">
-          <div className="section-heading">
-            <div>
-              <h2>{t("units.accountSummary")}</h2>
-              <p>{t("units.accountHelp")}</p>
-            </div>
-          </div>
-          <div className="unit-account-section">
-            <h3>{t("units.charges")}</h3>
-            {summary.charges.length === 0 ? (
-              <p className="empty-state">{t("units.noCharges")}</p>
-            ) : (
-              <div className="table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{t("DESCRIPTION")}</th>
-                      <th>{t("DUE DATE")}</th>
-                      <th>{t("AMOUNT")}</th>
-                      <th>{t("STATUS")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {summary.charges.map((charge) => {
-                      const allocated = summary.payments
-                        .flatMap((payment) => payment.allocations)
-                        .filter(
-                          (allocation) => allocation.chargeId === charge.id,
-                        )
-                        .reduce(
-                          (sum, allocation) => sum + allocation.amountMinor,
-                          0,
-                        );
-                      return (
-                        <tr key={charge.id}>
-                          <td>
-                            <strong>{charge.descriptionKey}</strong>
-                            <small>{period(charge.period)}</small>
-                          </td>
-                          <td>{date(charge.dueOn)}</td>
-                          <td>{moneyMinor(charge.amountMinor)}</td>
-                          <td>
-                            <span
-                              className={`status ${allocated === charge.amountMinor ? "resolved" : "open"}`}
-                            >
-                              {t(
-                                allocated === charge.amountMinor
-                                  ? "Paid"
-                                  : "Outstanding",
-                              )}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            <h3>{t("units.recordedPayments")}</h3>
-            {summary.payments.length === 0 ? (
-              <p className="empty-state">{t("units.noPayments")}</p>
-            ) : (
-              <div className="unit-payment-list">
-                {summary.payments.map((payment) => (
-                  <div key={payment.id}>
-                    <span>
-                      <strong>{t("units.bankTransfer")}</strong>
-                      <small>{date(payment.paidOn)}</small>
-                    </span>
-                    <strong>{moneyMinor(payment.amountMinor)}</strong>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="unit-credit">
-              <span>{t("units.unallocatedCredit")}</span>
-              <strong>{moneyMinor(summary.creditMinor)}</strong>
-            </div>
-          </div>
-        </section>
+      {past.length > 0 && (
+        <details className="panel directory-history">
+          <summary>{t("manager.pastPeople")}</summary>
+          <div className="relationship-list">{people(past)}</div>
+        </details>
       )}
     </div>
   );

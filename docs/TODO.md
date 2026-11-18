@@ -11,3 +11,10 @@ This document tracks topics for future consideration. An unchecked item is not a
   - **Limitations to reconsider:** A block without any units cannot be represented, and its label is repeated across unit records.
   - **Future question:** If blocks need their own lifecycle or attributes, evaluate a separate `Block` record linked by `communityId`. Decide whether the benefits justify the added complexity before implementation.
   - **Context:** [Domain and DDD guide](DOMAIN-DDD-GUIDE.md).
+
+## Frontend
+
+- [ ] **TODO-002: Conduct a frontend UI/UX analysis.**
+  - **Status:** Pending analysis.
+  - **Scope:** Review manager and resident workflows, navigation, visual consistency, accessibility, responsive/mobile usability, Turkish/English content, and loading, empty, error and feedback states.
+  - **Expected outcome:** Document findings and prioritize actionable improvements before implementation.
